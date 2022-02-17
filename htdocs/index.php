@@ -58,13 +58,13 @@ if(is_array($decoded_request)){
 
 $OpenCEX_common_impl = "common.php";
 
-require_once("../OpenCEX/" . $GLOBALS["OpenCEX_common_impl"]);
-require_once("../OpenCEX/matching_engine.php");
-require_once("../OpenCEX/TokenOrderBook.php");
-require_once("../OpenCEX/SafeMath.php");
-require_once("../OpenCEX/tokens.php");
-require_once("../OpenCEX/wallet_manager.php");
-require_once("../OpenCEX/blockchain_manager.php");
+require_once("../" . $GLOBALS["OpenCEX_common_impl"]);
+require_once("../matching_engine.php");
+require_once("../TokenOrderBook.php");
+require_once("../SafeMath.php");
+require_once("../tokens.php");
+require_once("../wallet_manager.php");
+require_once("../blockchain_manager.php");
 
 abstract class Request{
 	public abstract function execute(OpenCEX_L3_context $ctx, $args);
