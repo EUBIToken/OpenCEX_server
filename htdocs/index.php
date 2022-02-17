@@ -23,7 +23,9 @@ function OpenCEX_error_handler($errno, string $message, string $file, int $line,
 set_error_handler("OpenCEX_error_handler");
 
 //Safety checking
-if($_SERVER['HTTP_HOST'] !== getenv("OpenCEX_permitted_domain")){
+$OpenCEX_permitted_domain = getenv("OpenCEX_permitted_domain");
+
+if(is_string($OpenCEX_permitted_domain) && $_SERVER['HTTP_HOST'] !== $OpenCEX_permitted_domain){
 	//NOTE: This safety check prevents cloudflare-stripping attacks by
 	//accessing the herokuapp domain directly!
 	die('{"status": "error", "reason": "Unsupported origin!"}');

@@ -244,9 +244,6 @@ abstract class OpenCEX_L2_context{
 		$temp = getenv($env);
 		$this->check_safety(is_string($temp), "Enviroment variable must be string!");
 		$cached_envars[$env] = $temp;
-		
-		//delete original enviroment variable, since we already stashed it in cache!
-		putenv($env . "=");
 		return $temp;
 	}
 	
