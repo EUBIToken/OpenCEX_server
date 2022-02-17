@@ -57,15 +57,24 @@ final class OpenCEX_L1_context{
 			return;
 		} else{
 			$this->sql = $temp_sql;
-			
+			$db_name_select = $container->safe_getenv('OpenCEX_devserver') === "true";
+			$db_name = $db_name_select ? "OpenCEX_test" : "OpenCEX";
+			$nodb = $db_name_select ? "unknown database 'opencex_test'" : "unknown database 'opencex'";
 			try{
-				$temp_sql->select_db("OpenCEX");
+				$temp_sql->select_db($db_name);
+
+				//Setup database if not exist
+				if(strtolower($temp_sql->error) == $nodb){
+					throw new Exception($nodb);
+				} else{
+					$container->check_safety($temp_sql->error == "", "Unable to select MySQL database: " . htmlspecialchars($temp_sql->error));
+				}
 			} catch(Exception $e){
-				if(strtolower($e->getMessage()) == "unknown database 'opencex'"){
+				if(strtolower($e->getMessage()) == $nodb){
 					//Refund gas for database setup
 					$container->usegas(-500);
-					$this->safe_query("CREATE DATABASE OpenCEX;");
-					$temp_sql->select_db("OpenCEX");
+					$this->safe_query($db_name_select ? "CREATE DATABASE OpenCEX_test;" : "CREATE DATABASE OpenCEX;");
+					$temp_sql->select_db($db_name);
 					$this->safe_query("CREATE TABLE Accounts (UserID BIGINT NOT NULL AUTO_INCREMENT UNIQUE, Username VARCHAR(255) NOT NULL UNIQUE, Passhash VARCHAR(255) NOT NULL, DepositPrivateKey VARCHAR(64) UNIQUE NOT NULL, PRIMARY KEY (UserID));");
 					$this->safe_query("CREATE TABLE Sessions (SessionTokenHash VARCHAR(64) NOT NULL UNIQUE, UserID BIGINT NOT NULL, Expiry BIGINT NOT NULL);");
 					$this->safe_query("CREATE TABLE Balances (UserID BIGINT NOT NULL, Coin VARCHAR(255) NOT NULL, Balance VARCHAR(255) NOT NULL DEFAULT('0'));");
@@ -75,14 +84,6 @@ final class OpenCEX_L1_context{
 					throw $e;
 				}
 			}
-			
-			//Setup database if not exist
-			if(strtolower($temp_sql->error) == "unknown database 'opencex'"){
-
-			} else{
-				$container->check_safety($temp_sql->error == "", "Unable to select MySQL database: " . htmlspecialchars($temp_sql->error));
-			}
-			
 			//Begin MySQL transaction
 			$container->check_safety($this->safe_query("START TRANSACTION;") === true, "MySQL BEGIN returned invalid status!");
 		}
