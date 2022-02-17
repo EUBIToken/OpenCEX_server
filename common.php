@@ -238,12 +238,12 @@ abstract class OpenCEX_L2_context{
 	
 	public function safe_getenv(string $env){
 		$this->usegas(1);
-		if(array_key_exists($env, $cached_envars)){
-			return $cached_envars[$env];
+		if(array_key_exists($env, $this->cached_envars)){
+			return $this->cached_envars[$env];
 		}
 		$temp = getenv($env);
 		$this->check_safety(is_string($temp), "Enviroment variable must be string!");
-		$cached_envars[$env] = $temp;
+		$this->cached_envars[$env] = $temp;
 		return $temp;
 	}
 	
