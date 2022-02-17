@@ -49,7 +49,7 @@ final class OpenCEX_L1_context{
 		$this->container = $container;
 		$temp_sql=mysqli_init();
 		if(getenv('OpenCEX_sql_ssl') === "true"){
-			mysqli_ssl_set($temp_sql, NULL, NULL, "../OpenCEX/certificate.txt", NULL, NULL);
+			mysqli_ssl_set($temp_sql, NULL, NULL, "../certificate.txt", NULL, NULL);
 		}
 		mysqli_real_connect($temp_sql, $container->safe_getenv('OpenCEX_sql_servername'), $container->safe_getenv('OpenCEX_sql_username'), $container->safe_getenv('OpenCEX_sql_password'));
 		if ($temp_sql->connect_error) {

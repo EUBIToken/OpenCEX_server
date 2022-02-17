@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<definitions xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+             xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/"
+             xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/"
+             xmlns:tns="https://raincaptcha.com/"
+             xmlns:xs="http://www.w3.org/2001/XMLSchema"
+             xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/"
+             xmlns:http="http://schemas.xmlsoap.org/wsdl/http/"
+             name="CaptchaWsdl"
+             xmlns="http://schemas.xmlsoap.org/wsdl/">
+    <types>
+        <xs:schema elementFormDefault="qualified"
+                   xmlns:tns="http://schemas.xmlsoap.org/wsdl/"
+                   xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                   targetNamespace="https://raincaptcha.com/">
+            <xs:complexType name="Response">
+                <xs:sequence>
+                    <xs:element name="status" type="xs:integer" />
+                    <xs:element name="is_not_safe" type="xs:integer" />
+                    <xs:element name="error_code" type="xs:integer" />
+                </xs:sequence>
+            </xs:complexType>
+        </xs:schema>
+    </types>
+    <message name="sendRequest">
+        <part name="key" type="xs:string" />
+        <part name="data" type="xs:string" />
+        <part name="ip" type="xs:string" />
+    </message>
+    <message name="sendResponse">
+        <part name="Response" type="tns:Response" />
+    </message>
+
+    <portType name="CaptchaPortType">
+        <operation name="send">
+            <input message="tns:sendRequest" />
+            <output message="tns:sendResponse" />
+        </operation>
+    </portType>
+
+    <binding name="CaptchaBinding" type="tns:CaptchaPortType">
+        <soap:binding style="rpc" transport="http://schemas.xmlsoap.org/soap/http" />
+        <operation name="send">
+            <soap:operation soapAction="" style="rpc" />
+            <input>
+                <soap:body use="literal" />
+            </input>
+            <output>
+                <soap:body use="literal" />
+            </output>
+        </operation>
+    </binding>
+
+    <service name="Captcha">
+        <port name="CaptchaPort" binding="tns:CaptchaBinding">
+            <soap:address location="https://raincaptcha.com/soap/captcha" />
+        </port>
+    </service>
+</definitions>

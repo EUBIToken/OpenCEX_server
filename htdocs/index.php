@@ -448,7 +448,7 @@ try{
 			$ctx->check_safety_2($ip_addr == "::1", "captcha verification for localhost connections are supported!");
 			try{
 				$ctx->check_safety(array_key_exists('captcha', $data), "Captcha required!");
-				$captcha_result = (new SoapClient('https://raincaptcha.com/captcha.wsdl'))->send($ctx->safe_getenv("OpenCEX_raincaptcha_secret"), $data["captcha"], $ip_addr);
+				$captcha_result = (new SoapClient('../captcha.wsdl'))->send($ctx->safe_getenv("OpenCEX_raincaptcha_secret"), $data["captcha"], $ip_addr);
 				if ($captcha_result->status === 1) {
 					$captcha_solved = true;
 				} else {
