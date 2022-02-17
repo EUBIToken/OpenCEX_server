@@ -26,7 +26,7 @@ set_error_handler("OpenCEX_error_handler");
 if($_SERVER['HTTP_HOST'] !== getenv("OpenCEX_permitted_domain")){
 	//NOTE: This safety check prevents cloudflare-stripping attacks by
 	//accessing the herokuapp domain directly!
-	die('{"status": "error", "reason": "Unsupported origin!"}');
+	die('{"status": "error", "reason": "Unsupported origin: ' . getenv("OpenCEX_permitted_domain") . '!"}');
 }
 if(!array_key_exists("OpenCEX_request_body", $_POST)){
 	die('{"status": "error", "reason": "Missing request body!"}');
