@@ -488,7 +488,7 @@ try{
 	$leaked_ctx = null;
 	$ctx->finish_emitting();
 } catch (OpenCEX_assert_exception $e){
-	die('{"status": "error", "reason": "' . escapeJsonString($e) . '"}');
+	die('{"status": "error", "reason": "' . escapeJsonString($e->getMessage()) . '"}');
 } catch (Exception $e){
 	//NOTE: if we fail due to unexpected exception, we must destroy the context!
 	//Automatic context destruction only occours for OpenCEX_assert_exceptions.
