@@ -1,7 +1,7 @@
 <?php
 set_time_limit(0);
 header("Access-Control-Allow-Origin: https://exchange.polyeubitoken.com");
-header("Access-Control-Allow-Headers: *");
+header("Access-Control-Allow-Credentials: true");
 $leaked_ctx = null;
 $OpenCEX_anything_locked = false;
 $OpenCEX_tempgas = false;
