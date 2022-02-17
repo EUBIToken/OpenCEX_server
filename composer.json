@@ -1,0 +1,9 @@
+{
+    "require": {
+        "ext-soap": "*",
+		"ext-gmp": "*",
+        "php": ">=8.0.0",
+        "kornrunner/ethereum-address": "^0.3.0",
+        "kornrunner/ethereum-offline-raw-tx": "^0.4.0"
+    }
+}
