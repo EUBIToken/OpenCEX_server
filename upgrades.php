@@ -1,4 +1,4 @@
 <?php
 //OpenCEX upgrades
-return [];
+return ["INSERT INTO Misc (Kei, Val) VALUES ('testupgradesuccess', '1');"];
 ?>

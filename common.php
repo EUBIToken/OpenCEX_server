@@ -1,6 +1,6 @@
 <?php
 require_once("assert_exception.php");
-define("OpenCEX_dataset_version", 0);
+define("OpenCEX_dataset_version", 1);
 
 //The L1 context contains raw SQL query methods. It hides anything that
 //we don't need from the L2 context, to maximize security
@@ -97,9 +97,10 @@ final class OpenCEX_L1_context{
 			} else{
 				$container->check_safety($result->num_rows == 1, "Corrupted miscellaneous database!");
 				$result = intval($container->convcheck2($result->fetch_assoc(), "Val"));
-				if($result > OpenCEX_dataset_version){
+				if(OpenCEX_dataset_version > $result){
 					$this->safe_query("UPDATE TABLE Misc SET Val = '" . strval(OpenCEX_dataset_version) . "' WHERE Kei = 'version';");
 					$upgrades = require("upgrades.php");
+					$container->usegas(($result - OpenCEX_dataset_version) * 100);
 					for(; $result < OpenCEX_dataset_version; ){
 						$this->safe_query($upgrades[$result++]);
 					}
