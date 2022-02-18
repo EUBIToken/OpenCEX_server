@@ -232,7 +232,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 	}
 }, "balances" => new class extends Request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
-		return $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, int $userid2){
+		return $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, int $userid2, $allowed_tokens){
 			$l1ctx->safe_query("LOCK TABLE Balances READ;");
 			$result = $l1ctx->safe_query(implode(["SELECT Coin, Balance FROM Balances WHERE UserID = ", strval($userid2), " ORDER BY Coin;"]));
 			$l1ctx->safe_query("UNLOCK TABLES;");
@@ -246,13 +246,13 @@ $request_methods = ["non_atomic" => new class extends Request{
 					array_push($ret, [$coin2, $checker->convcheck2($row, "Balance")]);
 				}
 			}
-			foreach($ctx->safe_decode_json($ctx->safe_getenv("OpenCEX_tokens")) as $token){
+			foreach($allowed_tokens as $token){
 				if(!in_array($token, $found_coins, true)){
 					array_push($ret, [$token, "0"]);
 				}
 			}
 			return $ret;
-		}, $ctx->get_cached_user_id());
+		}, $ctx->get_cached_user_id(), $ctx->safe_decode_json($ctx->safe_getenv("OpenCEX_tokens")));
 	}
 	function batchable(){
 		return false;
