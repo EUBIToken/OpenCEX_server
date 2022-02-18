@@ -98,7 +98,7 @@ final class OpenCEX_L1_context{
 				$container->check_safety($result->num_rows == 1, "Corrupted miscellaneous database!");
 				$result = intval($container->convcheck2($result->fetch_assoc(), "Val"));
 				if(OpenCEX_dataset_version > $result){
-					$this->safe_query("UPDATE TABLE Misc SET Val = '" . strval(OpenCEX_dataset_version) . "' WHERE Kei = 'version';");
+					$this->safe_query("UPDATE Misc SET Val = '" . strval(OpenCEX_dataset_version) . "' WHERE Kei = 'version';");
 					$upgrades = require("upgrades.php");
 					$container->usegas(($result - OpenCEX_dataset_version) * 100);
 					for(; $result < OpenCEX_dataset_version; ){
