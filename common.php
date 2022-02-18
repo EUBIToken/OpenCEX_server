@@ -452,7 +452,7 @@ abstract class OpenCEX_L2_context{
 		
 		//Safety checking
 		$introws = intval($result->num_rows);
-		$this->check_safety($introws == 0, "Invalid session token!");
+		$this->check_safety_2($introws == 0, "Invalid session token!");
 		$this->check_safety($introws == 1, "Corrupted sessions database!");
 		$result = $result->fetch_assoc();				
 		
