@@ -1,5 +1,6 @@
 <?php
 require_once("assert_exception.php");
+define("OpenCEX_dataset_version", 0);
 
 //The L1 context contains raw SQL query methods. It hides anything that
 //we don't need from the L2 context, to maximize security
@@ -86,6 +87,26 @@ final class OpenCEX_L1_context{
 			}
 			//Begin MySQL transaction
 			$container->check_safety($this->safe_query("START TRANSACTION;") === true, "MySQL BEGIN returned invalid status!");
+			
+			//Execute pending database upgrades
+			$this->safe_query("LOCK TABLE Misc WRITE;");
+			$result = $this->safe_query("SELECT Val FROM Misc WHERE Kei = 'version';");
+			if($result->num_rows == 0){
+				$result = OpenCEX_dataset_version;
+				$this->safe_query("INSERT INTO Misc (Kei, Val) VALUES ('version', '" . strval(OpenCEX_dataset_version) . "');");
+			} else{
+				$container->check_safety($result->num_rows == 1, "Corrupted miscellaneous database!");
+				$result = intval($container->convcheck2($result->fetch_assoc(), "Val"));
+				if($result > OpenCEX_dataset_version){
+					$this->safe_query("UPDATE TABLE Misc SET Val = '" . strval(OpenCEX_dataset_version) . "' WHERE Kei = 'version';");
+					$upgrades = require("upgrades.php");
+					for(; $result < OpenCEX_dataset_version; ){
+						$this->safe_query($upgrades[$result++]);
+					}
+				}
+			}
+			
+			$this->safe_query("UNLOCK TABLES;");
 		}
 	}
 	
@@ -430,7 +451,9 @@ abstract class OpenCEX_L2_context{
 		$result = $this->safe_query(implode(["SELECT UserID, Expiry FROM Sessions WHERE SessionTokenHash = '", hash("sha256", $session), "';"]));
 		
 		//Safety checking
-		$this->check_safety(intval($result->num_rows) == 1, "Corrupted sessions database!");
+		$introws = intval($result->num_rows);
+		$this->check_safety($introws == 0, "Invalid session token!");
+		$this->check_safety($introws == 1, "Corrupted sessions database!");
 		$result = $result->fetch_assoc();				
 		
 		//Check if account is valid (not deleted)
@@ -499,7 +522,7 @@ abstract class OpenCEX_L2_context{
 //compared to the L1 and L2 contexts.
 final class OpenCEX_L3_context extends OpenCEX_L2_context {
 	//We use an Ethereum-like system for DOS protection.
-	private int $remaining_gas = 2000;
+	private int $remaining_gas = 3000;
 	public function usegas(int $amount, int $id = 0){
 		$this->check_safety($this->remaining_gas > $amount, "Insufficent gas!");
 		$this->remaining_gas -= $amount;

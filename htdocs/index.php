@@ -438,6 +438,7 @@ try{
 	
 	//Execute requests
 	foreach($decoded_request as $singular_request){
+		$ctx->usegas(1);
 		$data = null;
 		if(array_key_exists("data", $singular_request)){
 			$data = $singular_request["data"];
