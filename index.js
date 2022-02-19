@@ -209,7 +209,7 @@ console.log('');
 					//Just here to inhibit failures.
 				});
 				const confirmation = async function(n, receipt){
-					if(n < 20 || !receipt){
+					if(n < 2 || !receipt){
 						return;
 					}
 					if(receipt.status){
