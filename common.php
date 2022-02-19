@@ -95,6 +95,7 @@ final class OpenCEX_L1_context{
 				$result = OpenCEX_dataset_version;
 				$this->safe_query("INSERT INTO Misc (Kei, Val) VALUES ('version', '" . strval(OpenCEX_dataset_version) . "');");
 			} else{
+				$this->safe_query("UNLOCK TABLES;");
 				$container->check_safety($result->num_rows == 1, "Corrupted miscellaneous database!");
 				$result = intval($container->convcheck2($result->fetch_assoc(), "Val"));
 				if(OpenCEX_dataset_version > $result){
@@ -106,8 +107,6 @@ final class OpenCEX_L1_context{
 					}
 				}
 			}
-			
-			$this->safe_query("UNLOCK TABLES;");
 		}
 	}
 	
