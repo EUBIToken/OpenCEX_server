@@ -41,6 +41,11 @@ final class OpenCEX_WalletManager{
 		return $this->blockchain_manager->eth_getBalance($this->address);
 	}
 	
+	public function signTransactionIMPL(OpenCEX_Ethereum_Transaction $transaction, int $chainid){
+		$this->ctx->usegas(1);
+		return "0x" . $transaction->getRaw($this->private_key, $chainid);
+	}
+	
 	public function sendTransactionIMPL(OpenCEX_Ethereum_Transaction $transaction, int $chainid){
 		$this->ctx->usegas(1);
 		return $this->blockchain_manager->eth_sendRawTransaction("0x" . $transaction->getRaw($this->private_key, $chainid));
@@ -76,6 +81,11 @@ final class OpenCEX_SmartWalletManager{
 		$this->ctx->usegas(1);
 		$this->wallet->sendTransactionIMPL($transaction, $this->blockchain_manager->chainid);
 		return $this->batch_manager->execute($this->blockchain_manager)[0];
+	}
+	
+	public function signTransactionIMPL(OpenCEX_Ethereum_Transaction $transaction){
+		$this->ctx->usegas(1);
+		return $this->wallet->signTransactionIMPL($transaction, $this->blockchain_manager->chainid);
 	}
 	
 	public function reconstruct(string $key = ""){
@@ -119,7 +129,7 @@ final class OpenCEX_native_token extends OpenCEX_token{
 		//$this->ctx->die2(strval($chainquotes[0]) . ", " . strval($chainquotes[1]) . ", " . strval($chainquotes[2]));
 		$remains = $chainquotes[2]->sub($chainquotes[1]->mul(OpenCEX_uint::init($this->ctx, "21000")), "Amount not enough to cover blockchain fee!");
 		//$this->ctx->die2(implode(",", [strval($chainquotes[0]), strval($chainquotes[1]), "21000", $this->manager->reconstruct()->address, strval($remains)]));
-		file_get_contents(implode(["localhost:12345/sendAndCreditWhenSecure/polygon/0x", new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[1]->tohex(), "0x5208", $this->manager->reconstruct()->address, $remains->tohex()), "/", strval($from), "/", $this->name, "/", strval($remains)]));
+		file_get_contents(implode(["localhost:12345/sendAndCreditWhenSecure/polygon/", $this->manager->signTransactionIMPL(new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[1]->tohex(), "0x5208", $this->manager->reconstruct()->address, $remains->tohex())), "/", strval($from), "/", $this->name, "/", strval($remains)]));
 	}
 }
 ?>
