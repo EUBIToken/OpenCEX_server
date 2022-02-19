@@ -1,2 +1,2 @@
-web: vendor/bin/heroku-php-apache2 htdocs/
 worker: npm start
+web: vendor/bin/heroku-php-apache2 htdocs/
