@@ -9,7 +9,7 @@ console.log('');
 	let _sqlescape;
 	{
 		const mysql = require('mysql');
-		_sql = mysql.createConnection({host: env.OpenCEX_sqlserver, user: env.OpenCEX_sqluser, password: env.OpenCEX_sqlpassword, database: env.OpenCEX_sqldb, port: 3306, ssl:{ca:require('fs').readFileSync('certificate.txt')}});
+		_sql = mysql.createConnection({host: env.OpenCEX_sql_servername, user: env.OpenCEX_sql_username, password: env.OpenCEX_sql_password, database: (env.OpenCEX_devserver === "true") ? "OpenCEX_test" : "OpenCEX", port: 3306, ssl:{ca:require('fs').readFileSync('certificate.txt')}});
 		_sqlescape = mysql.escape;
 	}
 	const sql = _sql;
