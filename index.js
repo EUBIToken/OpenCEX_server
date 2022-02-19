@@ -5,6 +5,8 @@ console.log('Email: jessielesbian@protonmail.com Reddit: https://www.reddit.com/
 console.log('');
 {
 	const env = process.env;
+	let _sql;
+	let _sqlescape;
 	{
 		const mysql = require('mysql');
 		_sql = mysql.createConnection({host: env.OpenCEX_sqlserver, user: env.OpenCEX_sqluser, password: env.OpenCEX_sqlpassword, database: env.OpenCEX_sqldb, port: 3306, ssl:{ca:require('fs').readFileSync('certificate.txt')}});
