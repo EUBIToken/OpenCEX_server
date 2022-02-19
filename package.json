@@ -1,0 +1,9 @@
+{
+	"dependencies": {
+		"mysql": "^2.18.1",
+		"web3-eth": "^1.6.0"
+	},
+	"scripts": {
+		"start": "node index.js"
+	}
+}
