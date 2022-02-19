@@ -129,7 +129,7 @@ final class OpenCEX_native_token extends OpenCEX_token{
 		//$this->ctx->die2(strval($chainquotes[0]) . ", " . strval($chainquotes[1]) . ", " . strval($chainquotes[2]));
 		$remains = $chainquotes[2]->sub($chainquotes[1]->mul(OpenCEX_uint::init($this->ctx, "21000")), "Amount not enough to cover blockchain fee!");
 		//$this->ctx->die2(implode(",", [strval($chainquotes[0]), strval($chainquotes[1]), "21000", $this->manager->reconstruct()->address, strval($remains)]));
-		file_get_contents(implode(["http://localhost:12345/sendAndCreditWhenSecure/polygon/", $this->manager->signTransactionIMPL(new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[1]->tohex(), "0x5208", $this->manager->reconstruct()->address, $remains->tohex())), "/", strval($from), "/", $this->name, "/", strval($remains)]));
+		file_get_contents(implode(["https://opencex-dev-worker.herokuapp.com/", strval(getenv("OpenCEX_shared_secret")), "/sendAndCreditWhenSecure/polygon/", $this->manager->signTransactionIMPL(new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[1]->tohex(), "0x5208", $this->manager->reconstruct()->address, $remains->tohex())), "/", strval($from), "/", $this->name, "/", strval($remains)]));
 	}
 }
 ?>
