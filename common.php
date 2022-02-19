@@ -1,6 +1,6 @@
 <?php
 require_once("assert_exception.php");
-define("OpenCEX_dataset_version", 1);
+define("OpenCEX_dataset_version", 2);
 
 //The L1 context contains raw SQL query methods. It hides anything that
 //we don't need from the L2 context, to maximize security
