@@ -94,7 +94,7 @@ final class OpenCEX_SmartWalletManager{
 		return new OpenCEX_SmartWalletManager($this->ctx, $this->blockchain_manager, $key);
 	}
 }
-define("OpenCEX_chainids", [{24734: "mintme", 137: "polygon"}]);
+define("OpenCEX_chainids", {24734: "mintme", 137: "polygon"});
 final class OpenCEX_native_token extends OpenCEX_token{
 	private readonly OpenCEX_abi_encoder $encoder;
 	private readonly OpenCEX_SmartWalletManager $manager;
