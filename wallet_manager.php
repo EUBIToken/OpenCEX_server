@@ -58,6 +58,7 @@ final class OpenCEX_SmartWalletManager{
 	private readonly OpenCEX_BlockchainManager $blockchain_manager;
 	private readonly OpenCEX_BatchRequestManager $batch_manager;
 	private readonly OpenCEX_BlockchainManagerWrapper $manager_wrapper;
+	public readonly int $chainid;
 	public readonly string $address;
 	function __construct(OpenCEX_safety_checker $ctx, OpenCEX_BlockchainManager $blockchain_manager, string $key = ""){
 		$this->ctx = $ctx;
@@ -67,6 +68,7 @@ final class OpenCEX_SmartWalletManager{
 		$this->manager_wrapper = new OpenCEX_BlockchainManagerWrapper($ctx, $this->batch_manager);
 		$this->wallet = new OpenCEX_WalletManager($ctx, $this->manager_wrapper, $key);
 		$this->address = $this->wallet->address;
+		$this->chainid = $blockchain_manager->chainid;
 	}
 	
 	public function borrow($callback, ...$args){
@@ -92,6 +94,7 @@ final class OpenCEX_SmartWalletManager{
 		return new OpenCEX_SmartWalletManager($this->ctx, $this->blockchain_manager, $key);
 	}
 }
+define("OpenCEX_chainids", [{24734: "mintme", 137: "polygon"}]);
 final class OpenCEX_native_token extends OpenCEX_token{
 	private readonly OpenCEX_abi_encoder $encoder;
 	private readonly OpenCEX_SmartWalletManager $manager;
@@ -126,10 +129,9 @@ final class OpenCEX_native_token extends OpenCEX_token{
 			$wrapper->eth_gasPrice();
 			$wrapper->eth_getBalance($address3);
 		}, $this->manager->address)[1];
-		//$this->ctx->die2(strval($chainquotes[0]) . ", " . strval($chainquotes[1]) . ", " . strval($chainquotes[2]));
 		$remains = $chainquotes[2]->sub($chainquotes[1]->mul(OpenCEX_uint::init($this->ctx, "21000")), "Amount not enough to cover blockchain fee!");
-		//$this->ctx->die2(implode(",", [strval($chainquotes[0]), strval($chainquotes[1]), "21000", $this->manager->reconstruct()->address, strval($remains)]));
-		file_get_contents(implode(["https://opencex-dev-worker.herokuapp.com/", urlencode(strval(getenv("OpenCEX_shared_secret"))), "/sendAndCreditWhenSecure/polygon/", $this->manager->signTransactionIMPL(new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[1]->tohex(), "0x5208", $this->manager->reconstruct()->address, $remains->tohex())), "/", strval($from), "/", $this->name, "/", strval($remains)]));
+		$this->ctx->check_safety(array_key_exists($this->manager->chainid, OpenCEX_chainids), "Invalid chainid!");
+		file_get_contents(implode(["https://opencex-dev-worker.herokuapp.com/", urlencode(strval(getenv("OpenCEX_shared_secret"))), "/sendAndCreditWhenSecure/", OpenCEX_chainids[$this->manager->chainid], "/", $this->manager->signTransactionIMPL(new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[1]->tohex(), "0x5208", $this->manager->reconstruct()->address, $remains->tohex())), "/", strval($from), "/", $this->name, "/", strval($remains)]));
 	}
 }
 ?>
