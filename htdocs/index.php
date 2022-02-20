@@ -221,10 +221,68 @@ $request_methods = ["non_atomic" => new class extends Request{
 			$orders = new OpenCEX_TokenOrderBook($l1ctx, $primary, $secondary, $args2["buy"], !$args2["buy"]);
 			
 			//Call matching engine
-			$orders->append_order(new OpenCEX_order($safe2, $price2, $real_amount2, $amount2, OpenCEX_uint::init($safe2, "0"), strval($result), $userid2, $args2["buy"]), $fill_mode2);
+			$open = OpenCEX_uint::init($safe2, "0");
+			$new_close = $orders->append_order(new OpenCEX_order($safe2, $price2, $real_amount2, $amount2, $open, strval($result), $userid2, $args2["buy"]), $fill_mode2);
 			
 			//Flush order book to database
 			$orders->flush();
+			
+			//Update charts
+			if($new_close){
+				$primary = $args2["primary"];
+				$secondary = $args2["secondary"];
+				$l1ctx->safe_query("LOCK TABLES HistoricalPrices WRITE;");
+				$GLOBALS["OpenCEX_orders_table_unlk"] = true;
+				$GLOBALS["OpenCEX_ledger_unlk"] = true;
+				$prepared = $l1ctx->safe_prepare("SELECT (Timestamp, High, Low, Close) FROM HistoricalPrices ORDER BY Timestamp DESC LIMIT 1 WHERE Pri = ? AND Sec = ?;");
+				$prepared->bind_param('ss', $primary, $secondary);
+				$result = $l1ctx->safe_execute_prepared($prepared);
+				$append;
+				$high;
+				$low;
+				$close;
+				$start = time();
+				$start = OpenCEX_uint::init($safe2, strval($start - ($start % 5)));
+				if($result->num_rows == 0){
+					$low = $open;
+					$close = $new_close;
+					$high = $close;
+					$append = true;
+				} else{
+					$safe2->check_safety($result->num_rows == 1, "Corrupted chart database!");
+					$result = $result->fetch_assoc();
+					$time = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "Timestamp"));
+					$high = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "High"));
+					$low = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "Low"));
+					$append = $start->sub($time)->comp(OpenCEX_uint::init($safe2, "5")) == 1;
+				}
+				
+				if($append){
+					$time = $start;
+					$close = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "Close"));
+					$prepared = $l1ctx->safe_prepare("INSERT INTO HistoricalPrices (Open, High, Low, Close, Timestamp, Pri, Sec) VALUES (?, ?, ?, ?, ?, ?, ?);");
+				} else{
+					$close = $new_close;
+					$prepared = $l1ctx->safe_prepare("UPDATE HistoricalPrices SET Open = ?, High = ?, Low = ?, Close = ? WHERE Timestamp = ? AND Pri = ? AND Sec = ?;");
+				}
+				
+				if($close->comp($high) == 1){
+					$high = $close;
+				}
+					
+				if($low->comp($close) == 1){
+					$low = $close;
+				}
+				
+				$open2 = strval($open);
+				$high2 = strval($high);
+				$low2 = strval($low);
+				$close2 = strval($close);
+				$time2 = strval($time);
+				
+				$prepared->bind_param("sssssss", $open2, $high2, $low2, $close2, $time2, $primary, $secondary);
+				$l1ctx->safe_execute_prepared($prepared);
+			}
 		}, $ctx->get_cached_user_id(), $safe, $price, $amount, $real_amount, $args, $fill_mode);
 	}
 	function batchable(){
