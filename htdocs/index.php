@@ -234,7 +234,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 				$l1ctx->safe_query("LOCK TABLES HistoricalPrices WRITE;");
 				$GLOBALS["OpenCEX_orders_table_unlk"] = true;
 				$GLOBALS["OpenCEX_ledger_unlk"] = true;
-				$prepared = $l1ctx->safe_prepare("SELECT (Timestamp, High, Low, Close) FROM HistoricalPrices ORDER BY Timestamp DESC LIMIT 1 WHERE Pri = ? AND Sec = ?;");
+				$prepared = $l1ctx->safe_prepare("SELECT (Timestamp, High, Low, Close) FROM HistoricalPrices WHERE Pri = ? AND Sec = ? ORDER BY Timestamp DESC LIMIT 1;");
 				$prepared->bind_param('ss', $primary, $secondary);
 				$result = $l1ctx->safe_execute_prepared($prepared);
 				$append;
