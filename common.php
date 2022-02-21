@@ -531,7 +531,7 @@ abstract class OpenCEX_L2_context{
 			$low = $this->convcheck2($returned_candle, "Low");
 			$close = $this->convcheck2($returned_candle, "Close");
 			$last_candle = ['o' => $open, 'h' => $high, 'l' => $low, 'c' => $close];
-			$candlesticks->push($last_candle);
+			array_push($candlesticks, $last_candle);
 		}
 		
 		if(is_null($last_candle)){
