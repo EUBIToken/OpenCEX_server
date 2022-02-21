@@ -525,7 +525,7 @@ abstract class OpenCEX_L2_context{
 		$limit = $result->num_rows;
 		$last_candle = null;
 		for($i = 0; $i < $limit; $i++){
-			$returned_candle = $result->fetch_assoc;
+			$returned_candle = $result->fetch_assoc();
 			$open = $this->convcheck2($result, "Open");
 			$high = $this->convcheck2($result, "High");
 			$low = $this->convcheck2($result, "Low");
