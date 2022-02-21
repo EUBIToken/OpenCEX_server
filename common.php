@@ -515,6 +515,40 @@ abstract class OpenCEX_L2_context{
 		$this->usegas(1);
 		$result = $this->safe_query("UNLOCK TABLES;");
 	}
+	
+	public function loadcharts(string $primary, string $secondary){
+		$this->usegas(1);
+		$prepared = $this->safe_prepare("SELECT Timestamp, Open, High, Low, Close FROM HistoricalPrices WHERE Pri = ? AND Sec = ? ORDER BY Timestamp DESC LIMIT 60;");
+		$prepared->bind_param("ss", $primary, $secondary);
+		$result = $this->safe_execute_prepared($prepared);
+		$candlesticks = [];
+		$limit = $result->num_rows;
+		$last_candle = null;
+		for($i = 0; $i < $limit; $i++){
+			$returned_candle = $result->fetch_assoc;
+			$open = $this->convcheck2($result, "Open");
+			$high = $this->convcheck2($result, "High");
+			$low = $this->convcheck2($result, "Low");
+			$close = $this->convcheck2($result, "Close");
+			$last_candle = ['o' => $open, 'h' => $high, 'l' => $low, 'c' => $close];
+			$candlesticks.push($last_candle);
+		}
+		
+		if(is_null($last_candle)){
+			$last_candle = ['o' => '0', 'h' => '0', 'l' => '0', 'c' => '0'];
+			$limit = 60;
+		} else{
+			$last_candle['h'] = $last_candle['c'];
+			$last_candle['l'] = $last_candle['c'];
+			$last_candle['o'] = $last_candle['c'];
+			$limit = 60 - $limit;
+		}
+		
+		for($i = 0; $i < $limit; $i++){
+			$candlesticks.push($last_candle);
+		}
+		return $candlesticks;
+	}
 }
 
 //L3 context contains methods that doesn't need to access

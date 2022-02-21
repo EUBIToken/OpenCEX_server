@@ -242,7 +242,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 				$low;
 				$close;
 				$start = time();
-				$start = OpenCEX_uint::init($safe2, strval($start - ($start % 5)));
+				$start = OpenCEX_uint::init($safe2, strval($start - ($start % 86400)));
 				if($result->num_rows == 0){
 					$low = $open;
 					$close = $new_close;
@@ -253,7 +253,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 					$result = $result->fetch_assoc();
 					$time = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "Timestamp"));
 					
-					$append = $start->sub($time)->comp(OpenCEX_uint::init($safe2, "5")) == 1;
+					$append = $start->sub($time)->comp(OpenCEX_uint::init($safe2, "86400")) == 1;
 					if($append){
 						$open = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "Close"));
 						$high = $open;
@@ -320,6 +320,17 @@ $request_methods = ["non_atomic" => new class extends Request{
 			}
 			return $ret;
 		}, $ctx->get_cached_user_id(), $ctx->safe_decode_json($ctx->safe_getenv("OpenCEX_tokens")));
+	}
+	function batchable(){
+		return false;
+	}
+}, "get_chart" => new class extends Request{
+	public function execute(OpenCEX_L3_context $ctx, $args){
+		$ctx->check_safety(count($args) == 2, "Chart loading requires 2 arguments!");
+		check_safety_3($ctx, $args, null);
+		$ctx->check_safety(array_key_exists("primary", $args), "Chart loading must specify primary token!");
+		$ctx->check_safety(array_key_exists("secondary", $args), "Chart loading must specify secondary token!");
+		return $ctx->loadcharts($args['primary'], $args['secondary']);
 	}
 	function batchable(){
 		return false;
