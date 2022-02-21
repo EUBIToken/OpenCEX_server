@@ -545,7 +545,7 @@ abstract class OpenCEX_L2_context{
 		}
 		
 		for($i = 0; $i < $limit; $i++){
-			$candlesticks.push($last_candle);
+			array_push($candlesticks, $last_candle);
 		}
 		return $candlesticks;
 	}
