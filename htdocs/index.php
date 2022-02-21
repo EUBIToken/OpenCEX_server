@@ -252,10 +252,17 @@ $request_methods = ["non_atomic" => new class extends Request{
 					$safe2->check_safety($result->num_rows == 1, "Corrupted chart database!");
 					$result = $result->fetch_assoc();
 					$time = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "Timestamp"));
-					$high = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "High"));
-					$low = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "Low"));
+					
 					$append = $start->sub($time)->comp(OpenCEX_uint::init($safe2, "5")) == 1;
 					if($append){
+						$open = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "Close"));
+						$high = $open;
+						$low = $open;
+						$close = $new_close;
+					} else{
+						$open = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "Open"));
+						$high = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "High"));
+						$low = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "Low"));
 						$close = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "Close"));
 					}
 				}
