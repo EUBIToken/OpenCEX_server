@@ -244,7 +244,6 @@ $request_methods = ["non_atomic" => new class extends Request{
 				$start = time();
 				$start = OpenCEX_uint::init($safe2, strval($start - ($start % 5)));
 				if($result->num_rows == 0){
-					$result = $result->fetch_assoc();
 					$low = $open;
 					$close = $new_close;
 					$high = $close;
@@ -256,11 +255,13 @@ $request_methods = ["non_atomic" => new class extends Request{
 					$high = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "High"));
 					$low = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "Low"));
 					$append = $start->sub($time)->comp(OpenCEX_uint::init($safe2, "5")) == 1;
+					if($append){
+						$close = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "Close"));
+					}
 				}
 				
 				if($append){
 					$time = $start;
-					$close = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "Close"));
 					$prepared = $l1ctx->safe_prepare("INSERT INTO HistoricalPrices (Open, High, Low, Close, Timestamp, Pri, Sec) VALUES (?, ?, ?, ?, ?, ?, ?);");
 				} else{
 					$close = $new_close;
