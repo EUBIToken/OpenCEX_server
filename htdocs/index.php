@@ -244,6 +244,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 				$start = time();
 				$start = OpenCEX_uint::init($safe2, strval($start - ($start % 5)));
 				if($result->num_rows == 0){
+					$result = $result->fetch_assoc();
 					$low = $open;
 					$close = $new_close;
 					$high = $close;
