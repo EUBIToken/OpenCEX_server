@@ -351,6 +351,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 		
 		$safe = new OpenCEX_safety_checker($ctx);
 		switch($args["token"]){
+			case "PolyEUBI":
 			case "MATIC":
 				$blockchain = new OpenCEX_BlockchainManager($safe, 137, "https://polygon-rpc.com");
 				break;
@@ -363,8 +364,17 @@ $request_methods = ["non_atomic" => new class extends Request{
 		}
 		$wallet = new OpenCEX_SmartWalletManager($safe, $blockchain);
 		$token = $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, OpenCEX_SmartWalletManager $wallet2, string $name2){
-			return new OpenCEX_native_token($l1ctx, $name2, $wallet2, $name2);
+			$MATIC = new OpenCEX_pseudo_token($l1ctx, "MATIC");
+			$MintME = new OpenCEX_pseudo_token($l1ctx, "MintME");
+			
+			switch($name2){
+				case "PolyEUBI":
+					return new OpenCEX_erc20_token($l1ctx, $name2, $wallet2, "0x553e77f7f71616382b1545d4457e2c1ee255fa7a", $MATIC);
+				default:
+					return new OpenCEX_native_token($l1ctx, $name2, $wallet2);
+			}
 		}, $wallet, $args["token"]);
+		
 		
 		//We add some gas, so we don't fail due to insufficent gas.
 		$ctx->usegas(-1000);

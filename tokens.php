@@ -5,7 +5,7 @@ require_once($GLOBALS["OpenCEX_common_impl"]);
 require_once("SafeMath.php");
 
 abstract class OpenCEX_token{
-	private OpenCEX_L1_context $ctx;
+	protected OpenCEX_L1_context $ctx;
 	protected OpenCEX_safety_checker $safety_checker;
 	public readonly string $name;
 	private $prepared_query;
