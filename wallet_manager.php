@@ -100,12 +100,12 @@ final class OpenCEX_native_token extends OpenCEX_token{
 	private readonly OpenCEX_SmartWalletManager $manager;
 	public function __construct(OpenCEX_L1_context $l1ctx, string $name, OpenCEX_SmartWalletManager $manager){
 		parent::__construct($l1ctx, $name);
-		$this->ctx->usegas(1);
-		$this->encoder = new OpenCEX_abi_encoder($this->ctx);
+		$this->safety_checker->usegas(1);
+		$this->encoder = new OpenCEX_abi_encoder($this->safety_checker);
 		$this->manager = $manager;
 	}
 	public function send(int $from, string $address, OpenCEX_uint $amount, bool $sync = true){
-		$this->ctx->usegas(1);
+		$this->safety_checker->usegas(1);
 		
 		//Prepare transaction
 		$this->encoder->chkvalidaddy($address, false);
@@ -128,8 +128,8 @@ final class OpenCEX_native_token extends OpenCEX_token{
 			$wrapper->eth_gasPrice();
 			$wrapper->eth_getBalance($address3);
 		}, $this->manager->address)[1];
-		$remains = $chainquotes[2]->sub($chainquotes[1]->mul(OpenCEX_uint::init($this->ctx, "21000")), "Amount not enough to cover blockchain fee!");
-		$this->ctx->check_safety(array_key_exists($this->manager->chainid, OpenCEX_chainids), "Invalid chainid!");
+		$remains = $chainquotes[2]->sub($chainquotes[1]->mul(OpenCEX_uint::init($this->safety_checker, "21000")), "Amount not enough to cover blockchain fee!");
+		$this->safety_checker->check_safety(array_key_exists($this->manager->chainid, OpenCEX_chainids), "Invalid chainid!");
 		file_get_contents(implode([((getenv('OpenCEX_devserver') === "true") ? "https://opencex-dev-worker.herokuapp.com/" : "https://opencex-prod-worker.herokuapp.com/"), urlencode(strval(getenv("OpenCEX_shared_secret"))), "/sendAndCreditWhenSecure/", OpenCEX_chainids[$this->manager->chainid], "/", $this->manager->signTransactionIMPL(new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[1]->tohex(), "0x5208", $this->manager->reconstruct()->address, $remains->tohex())), "/", strval($from), "/", $this->name, "/", strval($remains)]));
 	}
 }
@@ -140,15 +140,15 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 	private readonly OpenCEX_token $gastoken;
 	public function __construct(OpenCEX_L1_context $l1ctx, string $name, OpenCEX_SmartWalletManager $manager, string $token_address, OpenCEX_token $gastoken){
 		parent::__construct($l1ctx, $name);
-		$this->ctx->usegas(1);
-		$this->encoder = new OpenCEX_abi_encoder($this->ctx);
+		$this->safety_checker->usegas(1);
+		$this->encoder = new OpenCEX_abi_encoder($this->safety_checker);
 		$this->encoder->chkvalidaddy($token_address, false);
 		$this->manager = $manager;
 		$this->token_address = $token_address;
 		$this->gastoken = $gastoken;
 	}
 	public function send(int $from, string $address, OpenCEX_uint $amount, bool $sync = true){
-		$this->ctx->usegas(1);
+		$this->safety_checker->usegas(1);
 		
 		//Prepare transaction
 		$this->encoder->chkvalidaddy($address, false);
@@ -167,7 +167,7 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 		
 	}
 	public function sweep(int $from){
-		$this->ctx->die2("ERC-20 deposits are not supported yet!");
+		$this->safety_checker->die2("ERC-20 deposits are not supported yet!");
 	}
 }
 ?>
