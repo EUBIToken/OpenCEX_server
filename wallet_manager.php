@@ -163,7 +163,7 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 		$this->gastoken->creditordebit($from, $chainquotes[1]->mul($chainquotes[2]), false, false);
 		$this->creditordebit($from, $amount, false, $sync);
 		
-		$this->manager->sendTransactionIMPL(new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[2]->tohex(), $chainquotes[1]->tohex(), $address, $transaction["value"]));
+		$this->manager->sendTransactionIMPL(new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[2]->tohex(), $chainquotes[1]->tohex(), $address, "0", $transaction["data"]));
 		
 	}
 	public function sweep(int $from){
