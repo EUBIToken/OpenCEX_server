@@ -166,6 +166,7 @@ abstract class OpenCEX_OrderBook{
 		
 		$old_total_cost = $order->total_cost;
 		$total_output = $this->safe_zero;
+		$xprice = null;
 		for($i = 0; $i < $limit; ){
 			//Execute order
 			$other = $counter[$i];
@@ -245,7 +246,7 @@ abstract class OpenCEX_OrderBook{
 		}
 		
 		$this->ctx->covmark(36 + $fill_mode);
-		return $minprice2;
+		return $xprice;
 	}
 	
 	protected abstract function get_more_orders(bool $buy);
