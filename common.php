@@ -518,7 +518,7 @@ abstract class OpenCEX_L2_context{
 	
 	public function loadcharts(string $primary, string $secondary){
 		$this->usegas(1);
-		$prepared = $this->safe_prepare("SELECT Timestamp, Open, High, Low, Close FROM HistoricalPrices WHERE Pri = ? AND Sec = ? ORDER BY Timestamp DESC LIMIT 60;");
+		$prepared = $this->safe_prepare("SELECT Timestamp, Open, High, Low, Close, Timestamp FROM HistoricalPrices WHERE Pri = ? AND Sec = ? ORDER BY Timestamp DESC LIMIT 60;");
 		$prepared->bind_param("ss", $primary, $secondary);
 		$result = $this->safe_execute_prepared($prepared);
 		$candlesticks = [];
@@ -530,7 +530,8 @@ abstract class OpenCEX_L2_context{
 			$high = $this->convcheck2($returned_candle, "High");
 			$low = $this->convcheck2($returned_candle, "Low");
 			$close = $this->convcheck2($returned_candle, "Close");
-			$last_candle = ['o' => $open, 'h' => $high, 'l' => $low, 'c' => $close];
+			$time = $this->convcheck2($returned_candle, "Timestamp");
+			$last_candle = ['o' => $open, 'h' => $high, 'l' => $low, 'c' => $close, 'x' => $time];
 			array_push($candlesticks, $last_candle);
 		}
 		
