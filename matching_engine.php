@@ -34,11 +34,16 @@ final class OpenCEX_order{
 	}
 	
 
-	function get_matched_amount(OpenCEX_order $other){
+	function get_matched_amount(OpenCEX_order $other, bool $executing_buy){
 		$this->ctx->usegas(1, 1);
 		
 		$this->ctx->check_safety_2($this->buy == $other->buy, "Order matching error: attempted to match two orders of the same type!");
-		$minprice = $other->price->min($this->price);
+		$executing_price;
+		if($executing_buy){
+			$executing_price = $other->price->min($this->price);
+		} else{
+			$executing_price = $other->price->max($this->price);
+		}
 		if($this->buy){
 			if($other->price->comp($this->price) == 1){
 				$this->ctx->covmark(2);
@@ -46,7 +51,7 @@ final class OpenCEX_order{
 			} else{
 				$tmp = $this->amount;
 				$tmp = $tmp->min($other->amount);
-				$tmp = $tmp->min($this->initial_amount->sub($this->total_cost)->mul($minprice)->div($this->safe_divisor));
+				$tmp = $tmp->min($this->initial_amount->sub($this->total_cost)->mul($executing_price)->div($this->safe_divisor));
 				$tmp = $tmp->min($other->initial_amount->sub($other->total_cost));
 				if($tmp->comp($this->safe_zero) == 0){
 					$this->ctx->covmark(3);
@@ -57,7 +62,7 @@ final class OpenCEX_order{
 					$other->amount = $other->amount->sub($tmp);
 					$other->total_cost = $other->total_cost->add($tmp);
 					$this->ctx->check_safety_2($other->total_cost->comp($other->initial_amount) == 1, "Maximum order cost exceeded (sell order)!");
-					$this->total_cost = $this->total_cost->add($tmp->mul($minprice)->div($this->safe_divisor));
+					$this->total_cost = $this->total_cost->add($tmp->mul($executing_price)->div($this->safe_divisor));
 					$this->ctx->check_safety_2($this->total_cost->comp($this->initial_amount) == 1, "Maximum order cost exceeded (buy order)!" . strval($this->id));
 					return $tmp;
 				}
@@ -66,7 +71,7 @@ final class OpenCEX_order{
 			}
 		} else{
 			$this->ctx->covmark(4);
-			return $other->get_matched_amount($this)->mul($minprice)->div($this->safe_divisor);
+			return $other->get_matched_amount($this, $executing_buy)->mul($executing_price)->div($this->safe_divisor);
 		}
 	}
 	
@@ -161,7 +166,6 @@ abstract class OpenCEX_OrderBook{
 		
 		$old_total_cost = $order->total_cost;
 		$total_output = $this->safe_zero;
-		$minprice2 = null;
 		for($i = 0; $i < $limit; ){
 			//Execute order
 			$other = $counter[$i];
@@ -177,7 +181,7 @@ abstract class OpenCEX_OrderBook{
 			}
 			$old_other_amount = $other->amount;
 			$old_other_total_cost = $other->total_cost;
-			$output = $order->get_matched_amount($other);
+			$output = $order->get_matched_amount($other, $order->buy);
 			
 			if($other->amount->comp($this->safe_zero) == 0){
 				$this->ctx->covmark(22);
@@ -191,10 +195,16 @@ abstract class OpenCEX_OrderBook{
 				array_push($this->modded_orders, $other);
 			}
 			$total_output = $total_output->add($output);
-			$minprice2 = $order->price->min($other->price);
+			$xprice;
+			if($order->buy){
+				$xprice = $order->price->min($other->price);
+			} else{
+				$xprice = $order->price->max($other->price);
+			}
+			
 			if($order->buy){
 				$this->ctx->covmark(25);
-				$this->order_execution_handler($other, $old_other_amount->sub($other->amount), $output->mul($minprice2)->div($this->safe_divisor));
+				$this->order_execution_handler($other, $old_other_amount->sub($other->amount), $output->mul($xprice)->div($this->safe_divisor));
 			} else{
 				$this->ctx->covmark(26);
 				$this->order_execution_handler($other, $old_other_amount->sub($other->amount), $old_other_amount->sub($other->amount));
