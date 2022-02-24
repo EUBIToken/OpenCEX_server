@@ -523,7 +523,6 @@ abstract class OpenCEX_L2_context{
 		$result = $this->safe_execute_prepared($prepared);
 		$candlesticks = [];
 		$limit = $result->num_rows;
-		$last_candle = null;
 		for($i = 0; $i < $limit; $i++){
 			$returned_candle = $result->fetch_assoc();
 			$open = $this->convcheck2($returned_candle, "Open");
@@ -531,24 +530,10 @@ abstract class OpenCEX_L2_context{
 			$low = $this->convcheck2($returned_candle, "Low");
 			$close = $this->convcheck2($returned_candle, "Close");
 			$time = $this->convcheck2($returned_candle, "Timestamp");
-			$last_candle = ['o' => $open, 'h' => $high, 'l' => $low, 'c' => $close, 'x' => $time];
-			array_push($candlesticks, $last_candle);
+			array_push($candlesticks, ['o' => $open, 'h' => $high, 'l' => $low, 'c' => $close, 'x' => $time]);
 		}
 		
-		if(is_null($last_candle)){
-			$last_candle = ['o' => '0', 'h' => '0', 'l' => '0', 'c' => '0'];
-			$limit = 60;
-		} else{
-			$last_candle['h'] = $last_candle['c'];
-			$last_candle['l'] = $last_candle['c'];
-			$last_candle['o'] = $last_candle['c'];
-			$limit = 60 - $limit;
-		}
-		
-		for($i = 0; $i < $limit; $i++){
-			array_push($candlesticks, $last_candle);
-		}
-		return $candlesticks;
+		return array_reverse($candlesticks);
 	}
 }
 
