@@ -147,12 +147,16 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 	private readonly OpenCEX_abi_encoder $encoder;
 	private readonly OpenCEX_SmartWalletManager $manager;
 	private readonly OpenCEX_token $gastoken;
+	private readonly OpenCEX_SmartWalletManager $tracked;
 	public function __construct(OpenCEX_L1_context $l1ctx, string $name, OpenCEX_SmartWalletManager $manager, string $token_address, OpenCEX_token $gastoken){
 		parent::__construct($l1ctx, $name);
 		$this->safety_checker->usegas(1);
 		$this->encoder = new OpenCEX_abi_encoder($this->safety_checker);
+		$this->tracked = $manager;
+		$manager = $manager->reconstruct();
 		$this->abi = implode(["0x8a738683", $this->encoder->chkvalidaddy($token_address), $this->encoder->chkvalidaddy($manager->address)]);
 		$this->manager = $manager;
+		
 		$this->token_address = $token_address;
 		$this->gastoken = $gastoken;
 	}
@@ -175,6 +179,7 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 		$this->manager->sendTransactionIMPL(new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[2]->tohex(), $chainquotes[1]->tohex(), $transaction["to"], "0", $transaction["data"]));
 		
 	}
+	
 	public function sweep(int $from){
 		$this->safety_checker->usegas(1);
 		$singleton = OpenCEX_chainids[$this->manager->chainid] === "polygon" ? "0x18a2db82061979e6e7d963cc3a21bcf6b6adef9b" : "0x98ecc85b24e0041c208c21aafba907cd74f9ded6";
@@ -189,7 +194,7 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 		$this->gastoken->creditordebit($from, $chainquotes[1]->mul($chainquotes[2]), false, true);
 		$this->safety_checker->check_safety(array_key_exists($this->manager->chainid, OpenCEX_chainids), "Invalid chainid!");
 		$signed = $this->manager->signTransactionIMPL(new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[1]->tohex(), $chainquotes[2]->tohex(), $singleton, "", $transaction["data"]));
-		file_get_contents(implode([((getenv('OpenCEX_devserver') === "true") ? "https://opencex-dev-worker.herokuapp.com/" : "https://opencex-prod-worker.herokuapp.com/"), urlencode(strval(getenv("OpenCEX_shared_secret"))), "/sendAndCreditWhenSecure/", OpenCEX_chainids[$this->manager->chainid], "/", urlencode($signed), "/", strval($from), "/", $this->name, "/", strval($this->manager->balanceOf($this->token_address))]));
+		file_get_contents(implode([((getenv('OpenCEX_devserver') === "true") ? "https://opencex-dev-worker.herokuapp.com/" : "https://opencex-prod-worker.herokuapp.com/"), urlencode(strval(getenv("OpenCEX_shared_secret"))), "/sendAndCreditWhenSecure/", OpenCEX_chainids[$this->manager->chainid], "/", urlencode($signed), "/", strval($from), "/", $this->name, "/", strval($this->tracked->balanceOf($this->token_address))]));
 	}
 }
 ?>
