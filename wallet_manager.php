@@ -177,7 +177,8 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 	}
 	public function sweep(int $from){
 		$this->safety_checker->usegas(1);
-		$transaction = ["from" => $this->manager->address, "to" => $this->token_address, "data" => $this->encoder->encode_erc20_transfer($this->manager->address, $this->manager->balanceOf($this->token_address))];
+		$amount = $this->manager->balanceOf($this->token_address);
+		$transaction = ["from" => $this->manager->address, "to" => $this->token_address, "data" => $this->encoder->encode_erc20_transfer($this->manager->address, $amount)];
 		$chainquotes = $this->manager->borrow(function(OpenCEX_BlockchainManagerWrapper $wrapper, string $address3, $transaction2){
 			$wrapper->eth_getTransactionCount($address3);
 			$wrapper->eth_gasPrice();
