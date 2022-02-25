@@ -27,14 +27,13 @@ final class OpenCEX_WalletManager{
 		$this->ctx = $ctx;
 		$this->address = "0x" . (new OpenCEX_Ethereum_Address($this->private_key))->get();
 		$this->chke20balance = "0x70a08231000000000000000000000000" . substr($this->address, 2);
-		die($this->chke20balance);
 		$this->encoder = new OpenCEX_abi_encoder($ctx);
 	}
 	
 	public function balanceOf(string $token_addy){
 		$this->ctx->usegas(1);
 		$this->encoder->chkvalidaddy($token_addy, false);
-		return OpenCEX_uint::init($this->ctx, $this->blockchain_manager->eth_call(["from" => "0x0000000000000000000000000000000000000000", "to" => $token_addy, "data" => $this->chke20balance]));
+		return $this->blockchain_manager->eth_call(["from" => "0x0000000000000000000000000000000000000000", "to" => $token_addy, "data" => $this->chke20balance]);
 	}
 	
 	public function nativeBalance($token_addy){
@@ -97,7 +96,8 @@ final class OpenCEX_SmartWalletManager{
 	}
 	public function balanceOf(string $token_addy){
 		$this->ctx->usegas(1);
-		return $this->wallet->balanceOf($token_addy);
+		$this->wallet->balanceOf($token_addy);
+		return OpenCEX_uint::init($this->ctx, $this->batch_manager->execute($this->blockchain_manager)[0]);
 	}
 }
 define("OpenCEX_chainids", [24734 => "mintme", 137 => "polygon"]);
