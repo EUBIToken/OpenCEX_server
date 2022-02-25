@@ -393,6 +393,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 		$blockchain;
 		switch($args["token"]){
 			case "MATIC":
+			case "PolyEUBI":
 				$blockchain = new OpenCEX_BlockchainManager($safe, 137, "https://polygon-rpc.com");
 				break;
 			case "MintME":
