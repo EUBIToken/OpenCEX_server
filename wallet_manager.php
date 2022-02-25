@@ -27,6 +27,7 @@ final class OpenCEX_WalletManager{
 		$this->ctx = $ctx;
 		$this->address = "0x" . (new OpenCEX_Ethereum_Address($this->private_key))->get();
 		$this->chke20balance = "0x70a08231000000000000000000000000" . substr($this->address, 2);
+		die($this->chke20balance);
 		$this->encoder = new OpenCEX_abi_encoder($ctx);
 	}
 	
