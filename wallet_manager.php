@@ -162,7 +162,7 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 			$encoded = implode(["0xe8aaeb54000000000000000000000000", substr($manager2->address, 2), "000000000000000000000000", substr($tracked, 2)]);
 			$wrapper->eth_call(["from" => "0x0000000000000000000000000000000000000000", "to" => $singleton, "data" => $encoded]);
 		}, $manager, $this->tracked);
-		$this->actual = "0x" . substr($ret2[0], 26);
+		$this->actual = "0x" . substr($ret2[1][0], 26);
 		$this->token_address = $token_address;
 		$this->gastoken = $gastoken;
 	}
@@ -194,13 +194,13 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 			$wrapper->eth_getTransactionCount($address3);
 			$wrapper->eth_gasPrice();
 			$wrapper->eth_estimateGas($transaction2);
-			$wrapper->eth_call();
+			$wrapper->eth_call(["from" => "0x0000000000000000000000000000000000000000", "to" => $token_addy, "data" => ("0x70a08231000000000000000000000000" . substr($this->actual, 2))]);
 		}, $this->manager->address, $transaction)[1];
 		
 		$this->gastoken->creditordebit($from, $chainquotes[1]->mul($chainquotes[2]), false, true);
 		$this->safety_checker->check_safety(array_key_exists($this->manager->chainid, OpenCEX_chainids), "Invalid chainid!");
 		$signed = $this->manager->signTransactionIMPL(new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[1]->tohex(), $chainquotes[2]->tohex(), $singleton, "", $transaction["data"]));
-		file_get_contents(implode([((getenv('OpenCEX_devserver') === "true") ? "https://opencex-dev-worker.herokuapp.com/" : "https://opencex-prod-worker.herokuapp.com/"), urlencode(strval(getenv("OpenCEX_shared_secret"))), "/sendAndCreditWhenSecure/", OpenCEX_chainids[$this->manager->chainid], "/", urlencode($signed), "/", strval($from), "/", $this->name, "/", strval($this->tracked->balanceOf($this->token_address))]));
+		file_get_contents(implode([((getenv('OpenCEX_devserver') === "true") ? "https://opencex-dev-worker.herokuapp.com/" : "https://opencex-prod-worker.herokuapp.com/"), urlencode(strval(getenv("OpenCEX_shared_secret"))), "/sendAndCreditWhenSecure/", OpenCEX_chainids[$this->manager->chainid], "/", urlencode($signed), "/", strval($from), "/", $this->name, "/", chainquotes[3])]));
 	}
 }
 ?>
