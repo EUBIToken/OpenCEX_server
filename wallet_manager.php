@@ -177,7 +177,8 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 	}
 	public function sweep(int $from){
 		$this->safety_checker->usegas(1);
-		$singleton = OpenCEX_tokenchains[$this->name] === "polygon" ? "0x18a2db82061979e6e7d963cc3a21bcf6b6adef9b" : "0x98ecc85b24e0041c208c21aafba907cd74f9ded6";
+		$singleton = OpenCEX_chainids[$this->manager->chainid] === "polygon" ? "0x18a2db82061979e6e7d963cc3a21bcf6b6adef9b" : "0x98ecc85b24e0041c208c21aafba907cd74f9ded6";
+		$this->safety_checker->die2($singleton);
 		$transaction = ["from" => $this->manager->address, "to" => $singleton, "data" => $this->abi];
 		$chainquotes = $this->manager->borrow(function(OpenCEX_BlockchainManagerWrapper $wrapper, string $address3, $transaction2){
 			$wrapper->eth_getTransactionCount($address3);
