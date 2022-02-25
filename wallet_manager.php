@@ -147,16 +147,22 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 	private readonly OpenCEX_abi_encoder $encoder;
 	private readonly OpenCEX_SmartWalletManager $manager;
 	private readonly OpenCEX_token $gastoken;
-	private readonly OpenCEX_SmartWalletManager $tracked;
+	private readonly string $tracked;
+	private readonly string $actual;
 	public function __construct(OpenCEX_L1_context $l1ctx, string $name, OpenCEX_SmartWalletManager $manager, string $token_address, OpenCEX_token $gastoken){
 		parent::__construct($l1ctx, $name);
 		$this->safety_checker->usegas(1);
 		$this->encoder = new OpenCEX_abi_encoder($this->safety_checker);
-		$this->tracked = $manager;
+		$this->tracked = $manager->address;
 		$manager = $manager->reconstruct();
 		$this->abi = implode(["0x8a738683", $this->encoder->chkvalidaddy($token_address), $this->encoder->chkvalidaddy($manager->address)]);
 		$this->manager = $manager;
-		
+		$ret2 = $manager->borrow(function(OpenCEX_BlockchainManagerWrapper $wrapper, OpenCEX_SmartWalletManager $manager2, string $tracked){
+			$singleton = OpenCEX_chainids[$manager2->chainid] === "polygon" ? "0x18a2db82061979e6e7d963cc3a21bcf6b6adef9b" : "0x98ecc85b24e0041c208c21aafba907cd74f9ded6";
+			$encoded = implode(["0xe8aaeb54000000000000000000000000", substr($manager2->address, 2), "000000000000000000000000", substr($tracked, 2)]);
+			$wrapper->eth_call(["from" => "0x0000000000000000000000000000000000000000", "to" => $singleton, "data" => $encoded]);
+		}, $manager, $this->tracked);
+		$this->actual = ;
 		$this->token_address = $token_address;
 		$this->gastoken = $gastoken;
 	}
@@ -183,12 +189,12 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 	public function sweep(int $from){
 		$this->safety_checker->usegas(1);
 		$singleton = OpenCEX_chainids[$this->manager->chainid] === "polygon" ? "0x18a2db82061979e6e7d963cc3a21bcf6b6adef9b" : "0x98ecc85b24e0041c208c21aafba907cd74f9ded6";
-		
 		$transaction = ["from" => $this->manager->address, "to" => $singleton, "data" => $this->abi];
 		$chainquotes = $this->manager->borrow(function(OpenCEX_BlockchainManagerWrapper $wrapper, string $address3, $transaction2){
 			$wrapper->eth_getTransactionCount($address3);
 			$wrapper->eth_gasPrice();
 			$wrapper->eth_estimateGas($transaction2);
+			$wrapper->eth_call();
 		}, $this->manager->address, $transaction)[1];
 		
 		$this->gastoken->creditordebit($from, $chainquotes[1]->mul($chainquotes[2]), false, true);
