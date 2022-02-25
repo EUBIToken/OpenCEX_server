@@ -406,7 +406,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 		$wallet;
 		switch($args["token"]){
 			case "PolyEUBI":
-				$wallet = new OpenCEX_SmartWalletManager($safe, $blockchain)
+				$wallet = new OpenCEX_SmartWalletManager($safe, $blockchain);
 				break;
 			default:
 				$wallet = new OpenCEX_SmartWalletManager($safe, $blockchain, $ctx->cached_eth_deposit_key());
