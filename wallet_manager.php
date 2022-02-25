@@ -91,10 +91,16 @@ final class OpenCEX_SmartWalletManager{
 	}
 	
 	public function reconstruct(string $key = ""){
+		$this->ctx->usegas(1);
 		return new OpenCEX_SmartWalletManager($this->ctx, $this->blockchain_manager, $key);
+	}
+	public function balanceOf(string $token_addy){
+		$this->ctx->usegas(1);
+		return $this->wallet->balanceOf($token_addy);
 	}
 }
 define("OpenCEX_chainids", [24734 => "mintme", 137 => "polygon"]);
+define("OpenCEX_tokenchains", ["PolyEUBI" => "polygon"]);
 final class OpenCEX_native_token extends OpenCEX_token{
 	private readonly OpenCEX_abi_encoder $encoder;
 	private readonly OpenCEX_SmartWalletManager $manager;
@@ -135,6 +141,7 @@ final class OpenCEX_native_token extends OpenCEX_token{
 }
 final class OpenCEX_erc20_token extends OpenCEX_token{
 	private readonly string $token_address;
+	private readonly string $abi;
 	private readonly OpenCEX_abi_encoder $encoder;
 	private readonly OpenCEX_SmartWalletManager $manager;
 	private readonly OpenCEX_token $gastoken;
@@ -142,7 +149,7 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 		parent::__construct($l1ctx, $name);
 		$this->safety_checker->usegas(1);
 		$this->encoder = new OpenCEX_abi_encoder($this->safety_checker);
-		$this->encoder->chkvalidaddy($token_address, false);
+		$this->abi = implode(["0x8a738683", $this->encoder->chkvalidaddy($token_address), $this->encoder->chkvalidaddy($this->manager->address)]);
 		$this->manager = $manager;
 		$this->token_address = $token_address;
 		$this->gastoken = $gastoken;
@@ -167,7 +174,16 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 		
 	}
 	public function sweep(int $from){
-		$this->safety_checker->die2("ERC-20 deposits are not supported yet!");
+		$transaction = ["from" => $this->manager->address, "to" => $this->token_address, "data" => $this->abi];
+		$chainquotes = $this->manager->borrow(function(OpenCEX_BlockchainManagerWrapper $wrapper, string $address3, $transaction2){
+			$wrapper->eth_getTransactionCount($address3);
+			$wrapper->eth_gasPrice();
+			$wrapper->eth_estimateGas($transaction2);
+		}, $this->manager->address, $transaction)[1];
+		
+		$this->safety_checker->check_safety(array_key_exists($this->manager->chainid, OpenCEX_chainids), "Invalid chainid!");
+		$signed = $this->manager->signTransactionIMPL(new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[1]->tohex(), $chainquotes[2]->tohex(), $this->token_address, "0", $transaction["data"]));
+		file_get_contents(implode([((getenv('OpenCEX_devserver') === "true") ? "https://opencex-dev-worker.herokuapp.com/" : "https://opencex-prod-worker.herokuapp.com/"), urlencode(strval(getenv("OpenCEX_shared_secret"))), "/sendAndCreditWhenSecure/", OpenCEX_chainids[$this->manager->chainid], "/", urlencode($signed), "/", strval($from), "/", $this->name, "/", strval($amount)]));
 	}
 }
 ?>

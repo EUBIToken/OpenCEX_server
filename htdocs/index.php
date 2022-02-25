@@ -405,7 +405,13 @@ $request_methods = ["non_atomic" => new class extends Request{
 		$wallet = new OpenCEX_SmartWalletManager($safe, $blockchain, $ctx->cached_eth_deposit_key());
 		$GLOBALS["OpenCEX_ledger_unlk"] = false; //Pretend that the balances table is locked, since we are not reading or writing anyone's balance.
 		$token = $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, OpenCEX_SmartWalletManager $manager, string $token2){
-			return new OpenCEX_native_token($l1ctx, $token2, $manager);
+			switch($token2){
+				case "PolyEUBI":
+					return new OpenCEX_erc20_token($l1ctx, $token2, $manager);
+				default:
+					return new OpenCEX_native_token($l1ctx, $token2, $manager);
+			}
+			
 		}, $wallet, $args["token"]);
 		$GLOBALS["OpenCEX_ledger_unlk"] = true;
 		//We add some gas, so we don't fail due to insufficent gas.
