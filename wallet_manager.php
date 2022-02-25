@@ -149,7 +149,7 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 		parent::__construct($l1ctx, $name);
 		$this->safety_checker->usegas(1);
 		$this->encoder = new OpenCEX_abi_encoder($this->safety_checker);
-		$this->abi = implode(["0x8a738683", $this->encoder->chkvalidaddy($token_address), $this->encoder->chkvalidaddy($this->manager->address)]);
+		$this->abi = implode(["0x8a738683", $this->encoder->chkvalidaddy($token_address), $this->encoder->chkvalidaddy($manager->address)]);
 		$this->manager = $manager;
 		$this->token_address = $token_address;
 		$this->gastoken = $gastoken;
