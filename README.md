@@ -26,7 +26,7 @@ As part of our transparency policy, we let customers view the source code of our
 ## FAQs
 
 ### Is this exchange safe
-While OpenCEX is still experimental, the Jessie Lesbian Cryptocurrency Exchange is safe. We used the best cybersecurity practices in our exchange. We battle-tested our code in our isolated test servers, before uploading it in our production servers.
+While OpenCEX is still experimental, the Jessie Lesbian Cryptocurrency Exchange is safe. We used the best cybersecurity practices in our exchange. We battle-tested our code in our isolated test servers, before uploading it in our production servers. If you want to, you can learn our cybersecurity best practices [here](https://www.coursera.org/learn/identifying-security-vulnerabilities).
 
 ![image](https://user-images.githubusercontent.com/55774978/155685203-be0589ec-9905-463c-9a18-531241000ece.png)
 
