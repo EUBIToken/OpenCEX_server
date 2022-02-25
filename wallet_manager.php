@@ -162,7 +162,7 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 			$encoded = implode(["0xe8aaeb54000000000000000000000000", substr($manager2->address, 2), "000000000000000000000000", substr($tracked, 2)]);
 			$wrapper->eth_call(["from" => "0x0000000000000000000000000000000000000000", "to" => $singleton, "data" => $encoded]);
 		}, $manager, $this->tracked);
-		$this->actual = "0x" . substr($ret2, 26);
+		$this->actual = "0x" . substr($ret2[0], 26);
 		$this->token_address = $token_address;
 		$this->gastoken = $gastoken;
 	}
