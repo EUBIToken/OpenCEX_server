@@ -128,7 +128,8 @@ final class OpenCEX_native_token extends OpenCEX_token{
 		$this->manager->sendTransactionIMPL(new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[2]->tohex(), $chainquotes[1]->tohex(), $address, $transaction["value"]));
 		
 	}
-	public function sweep(int $from){		
+	public function sweep(int $from){
+		$this->safety_checker->usegas(1);
 		$chainquotes = $this->manager->borrow(function(OpenCEX_BlockchainManagerWrapper $wrapper, string $address3){
 			$wrapper->eth_getTransactionCount($address3);
 			$wrapper->eth_gasPrice();
@@ -174,7 +175,8 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 		
 	}
 	public function sweep(int $from){
-		$transaction = ["from" => $this->manager->address, "to" => $this->token_address, "data" => $this->abi];
+		$this->safety_checker->usegas(1);
+		$transaction = ["from" => $this->manager->address, "to" => $this->token_address, "data" => $this->encoder->encode_erc20_transfer($this->manager->address, $this->manager->balanceOf($this->token_address))];
 		$chainquotes = $this->manager->borrow(function(OpenCEX_BlockchainManagerWrapper $wrapper, string $address3, $transaction2){
 			$wrapper->eth_getTransactionCount($address3);
 			$wrapper->eth_gasPrice();
