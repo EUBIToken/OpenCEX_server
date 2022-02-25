@@ -160,6 +160,7 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 		$ret2 = $manager->borrow(function(OpenCEX_BlockchainManagerWrapper $wrapper, OpenCEX_SmartWalletManager $manager2, string $tracked){
 			$singleton = OpenCEX_chainids[$manager2->chainid] === "polygon" ? "0x18a2db82061979e6e7d963cc3a21bcf6b6adef9b" : "0x98ecc85b24e0041c208c21aafba907cd74f9ded6";
 			$encoded = implode(["0xe8aaeb54000000000000000000000000", substr($manager2->address, 2), "000000000000000000000000", substr($tracked, 2)]);
+			die($encoded);
 			$wrapper->eth_call(["from" => "0x0000000000000000000000000000000000000000", "to" => $singleton, "data" => $encoded]);
 		}, $manager, $this->tracked);
 		$this->actual = "0x" . substr($ret2[1][0], 26);
