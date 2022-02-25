@@ -403,7 +403,15 @@ $request_methods = ["non_atomic" => new class extends Request{
 				$ctx->die2("Unsupported token!");
 				break;
 		}
-		$wallet = new OpenCEX_SmartWalletManager($safe, $blockchain, $ctx->cached_eth_deposit_key());
+		$wallet;
+		switch($args["token"]){
+			case "PolyEUBI":
+				$wallet = new OpenCEX_SmartWalletManager($safe, $blockchain)
+				break;
+			default:
+				$wallet = new OpenCEX_SmartWalletManager($safe, $blockchain, $ctx->cached_eth_deposit_key());
+				break;
+		}
 		$GLOBALS["OpenCEX_ledger_unlk"] = false; //Pretend that the balances table is locked, since we are not reading or writing anyone's balance.
 		$token = $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, OpenCEX_SmartWalletManager $manager, string $token2){
 			switch($token2){
