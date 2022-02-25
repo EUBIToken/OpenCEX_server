@@ -15,7 +15,9 @@ As part of our transparency policy, we let customers view the source code of our
 
 ### Phrase 2 - before test launch 2
 ~~1. List partner tokens~~
+
 ~~2. Price charts~~
+
 3. Add new account settings
 4. Add new security features
 
