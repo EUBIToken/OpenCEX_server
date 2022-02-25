@@ -194,7 +194,7 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 			$wrapper->eth_getTransactionCount($address3);
 			$wrapper->eth_gasPrice();
 			$wrapper->eth_estimateGas($transaction2);
-			$wrapper->eth_call(["from" => "0x0000000000000000000000000000000000000000", "to" => $token_addy, "data" => ("0x70a08231000000000000000000000000" . substr($this->actual, 2))]);
+			$wrapper->eth_call(["from" => "0x0000000000000000000000000000000000000000", "to" => $this->token_address, "data" => ("0x70a08231000000000000000000000000" . substr($this->actual, 2))]);
 		}, $this->manager->address, $transaction)[1];
 		
 		$this->gastoken->creditordebit($from, $chainquotes[1]->mul($chainquotes[2]), false, true);
