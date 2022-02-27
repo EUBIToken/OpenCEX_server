@@ -358,6 +358,9 @@ $request_methods = ["non_atomic" => new class extends Request{
 			case "MintME":
 				$blockchain = new OpenCEX_BlockchainManager($safe, 24734, "https://node1.mintme.com:443");
 				break;
+			case "BNB":
+				$blockchain = new OpenCEX_BlockchainManager($safe, 56, "https://bsc-dataseed.binance.org/");
+				break;
 			default:
 				$ctx->die2("Unsupported token!");
 				break;
@@ -398,6 +401,9 @@ $request_methods = ["non_atomic" => new class extends Request{
 				break;
 			case "MintME":
 				$blockchain = new OpenCEX_BlockchainManager($safe, 24734, "https://node1.mintme.com:443");
+				break;
+			case "BNB":
+				$blockchain = new OpenCEX_BlockchainManager($safe, 56, "https://bsc-dataseed.binance.org/");
 				break;
 			default:
 				$ctx->die2("Unsupported token!");
