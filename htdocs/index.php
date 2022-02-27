@@ -481,7 +481,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 			$remains = OpenCEX_uint::init($safe, $safe->convcheck2($res2, "InitialAmount"));
 			$remains = $remains->sub(OpenCEX_uint::init($safe, $safe->convcheck2($res2, "TotalCost")));
 			$query2 = implode(["https://opencex-dev-worker.herokuapp.com/", urlencode(getenv("OpenCEX_shared_secret")), "/parallelCredit/", strval($id2), "/", urlencode($safe->convcheck2($res2, ($safe->convcheck2($res2, "Buy") == "1") ? "Pri" : "Sec")), "/", strval($remains)]);
-			$safe->check_safety(file_get_contents($query2) === "ok");
+			$safe->check_safety(file_get_contents($query2) === "ok", "Balance update failed!");
 			$GLOBALS["OpenCEX_orders_table_unlk"] = true;
 			$l1ctx->safe_query("UNLOCK TABLES;");
 		}, $args["target"], new OpenCEX_safety_checker($ctx), $result, $id);
