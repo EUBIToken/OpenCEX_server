@@ -6,14 +6,20 @@ final class OpenCEX_TokenOrderBook extends OpenCEX_OrderBook{
 	private $buy_prices = null;
 	private $sell_prices = null;
 	private int $last_rep = 1;
+	private string $query2;
+	
+	private function cred2(int $id2, string $token, OpenCEX_uint $amount){
+		$query2 = implode([$this->query2, strval($id2), "/", urlencode($token), "/", strval($amount)]);
+	}
 	
 	//NOTE: Order cancellations are handled by the request manager, not the matching engine.
 	public function __construct(OpenCEX_L1_context $l1ctx, OpenCEX_token $primary, OpenCEX_token $secondary, bool $allow_buy = false, bool $allow_sell = false){
 		parent::__construct($l1ctx->get_safety_checker());
 		
 		$this->ctx->check_safety_2($GLOBALS["OpenCEX_orders_table_unlk"] || $GLOBALS["OpenCEX_ledger_unlk"], "Tables not properly locked!");
-		
 		$this->ctx->usegas(1);
+		
+		$this->query2 = implode(["https://opencex-dev-worker.herokuapp.com/", urlencode(getenv("OpenCEX_shared_secret")), "/parallelCredit/"]);
 		
 		$this->l1ctx = $l1ctx;
 		$this->primary = $primary;
@@ -36,7 +42,7 @@ final class OpenCEX_TokenOrderBook extends OpenCEX_OrderBook{
 		} else{
 			$token = $this->secondary;
 		}
-		$token->creditordebit($order->placed_by, $order->initial_amount->sub($order->total_cost), true, false);
+		$this->cred2($order->placed_by, $token->name, $order->initial_amount->sub($order->total_cost));
 	}
 
 	private function permit($prepared){
@@ -94,7 +100,7 @@ final class OpenCEX_TokenOrderBook extends OpenCEX_OrderBook{
 	}
 	
 	//Flush order book to database
-	public function flush(bool $flush_ledgers = true){
+	public function flush(){
 		$this->ctx->usegas(1);
 		//Append new orders
 		$noremove = [];
@@ -152,12 +158,6 @@ final class OpenCEX_TokenOrderBook extends OpenCEX_OrderBook{
 		$this->removed_orders = [];
 		$this->appended_orders = [];
 		$this->modded_orders = [];
-		
-		//Flush ledgers
-		if($flush_ledgers){
-			$this->primary->flush();
-			$this->secondary->flush();
-		}
 	}
 	
 	protected function order_execution_handler(OpenCEX_order $order, OpenCEX_uint $cost, OpenCEX_uint $output, bool $refund = true){
@@ -175,12 +175,12 @@ final class OpenCEX_TokenOrderBook extends OpenCEX_OrderBook{
 		if($refund && $order->amount->comp($this->safe_zero) == 0){
 			//If the order is filled at a better-than-expected price, credit the diffrence
 			//back to the account that placed the order
-			$token1->creditordebit($order->placed_by, $order->initial_amount->sub($order->total_cost), true, false);
+			$this->cred2($order->placed_by, $token1->name, $order->initial_amount->sub($order->total_cost));
 			//NOTE: this refund doesn't occour for immediate or cancel orders, since it's already done by
 			//the matching engine.
 		}
 		
-		$token2->creditordebit($order->placed_by, $output, true, false);
+		$this->cred2($order->placed_by, $token2->name, $output);
 	}
 }
 ?>

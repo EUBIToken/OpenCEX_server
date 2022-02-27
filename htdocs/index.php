@@ -190,10 +190,17 @@ $request_methods = ["non_atomic" => new class extends Request{
 		
 		$ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, int $userid2, OpenCEX_safety_checker $safe2, OpenCEX_uint $price2, OpenCEX_uint $amount2, OpenCEX_uint $real_amount2, $args2, int $fill_mode2){
 			//LOCK TABLES
-			$GLOBALS["OpenCEX_orders_table_unlk"] = false;
-			$GLOBALS["OpenCEX_ledger_unlk"] = false;
-			$GLOBALS["OpenCEX_anything_locked"] = true;
-			$l1ctx->safe_query("LOCK TABLES Balances WRITE, Orders WRITE, Misc WRITE;");
+			$l1ctx->safe_query("LOCK TABLES Balances WRITE;");
+			//Debit from user balance
+			if($args2["buy"]){
+				$primary->creditordebit($userid2, $amount2, false, true);
+			} else{
+				$secondary->creditordebit($userid2, $amount2, false, true);
+			}
+			
+			$GLOBALS['OpenCEX_ledger_unlk'] = true;
+			$GLOBALS['OpenCEX_orders_table_unlk'] = false;
+			$l1ctx->safe_query("LOCK TABLES Orders WRITE, Misc WRITE;");
 			
 			//Increment orders counter
 			$result = $l1ctx->safe_query("SELECT Val FROM Misc WHERE Kei = 'OrderCounter';");
@@ -210,12 +217,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 			$primary = new OpenCEX_pseudo_token($l1ctx, $args2["primary"]);
 			$secondary = new OpenCEX_pseudo_token($l1ctx, $args2["secondary"]);
 			
-			//Debit from user balance
-			if($args2["buy"]){
-				$primary->creditordebit($userid2, $amount2, false, false);
-			} else{
-				$secondary->creditordebit($userid2, $amount2, false, false);
-			}
+			
 			
 			//Initialize matching engine
 			$orders = new OpenCEX_TokenOrderBook($l1ctx, $primary, $secondary, $args2["buy"], !$args2["buy"]);
