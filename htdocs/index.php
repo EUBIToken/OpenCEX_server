@@ -190,6 +190,8 @@ $request_methods = ["non_atomic" => new class extends Request{
 		
 		$ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, int $userid2, OpenCEX_safety_checker $safe2, OpenCEX_uint $price2, OpenCEX_uint $amount2, OpenCEX_uint $real_amount2, $args2, int $fill_mode2){
 			//LOCK TABLES
+			$GLOBALS['OpenCEX_anything_locked'] = true;
+			$GLOBALS['OpenCEX_ledger_unlk'] = false;
 			$l1ctx->safe_query("LOCK TABLES Balances WRITE;");
 			
 			//Initialize database of balances, and debit amount from user
