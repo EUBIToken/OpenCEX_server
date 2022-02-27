@@ -478,14 +478,15 @@ $request_methods = ["non_atomic" => new class extends Request{
 		$ctx->check_safety($ctx->convcheck2($result, "PlacedBy") == strval($id), "Attempted to cancel another user's order!");
 		$ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, string $target, OpenCEX_safety_checker $safe, $res2, int $id2){
 			$l1ctx->safe_query(implode(['DELETE FROM Orders WHERE Id = "', $target, '";']));
-			$token = new OpenCEX_pseudo_token($l1ctx, $safe->convcheck2($res2, ($safe->convcheck2($res2, "Buy") == "1") ? "Pri" : "Sec"));
 			$remains = OpenCEX_uint::init($safe, $safe->convcheck2($res2, "InitialAmount"));
 			$remains = $remains->sub(OpenCEX_uint::init($safe, $safe->convcheck2($res2, "TotalCost")));
-			$l1ctx->safe_query("LOCK TABLE Balances WRITE;");
+			$query2 = implode(["https://opencex-dev-worker.herokuapp.com/", urlencode(getenv("OpenCEX_shared_secret")), "/parallelCredit/", strval($id2), "/", urlencode($safe->convcheck2($res2, ($safe->convcheck2($res2, "Buy") == "1") ? "Pri" : "Sec")), "/", strval($remains)]);
+			$safe->check_safety(file_get_contents($query2) === "ok");
 			$GLOBALS["OpenCEX_orders_table_unlk"] = true;
-			$token->creditordebit($id2, $remains, true, true);
 			$l1ctx->safe_query("UNLOCK TABLES;");
 		}, $args["target"], new OpenCEX_safety_checker($ctx), $result, $id);
+		
+		
 	}
 	function batchable(){
 		return false;
