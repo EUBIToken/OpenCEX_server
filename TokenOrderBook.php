@@ -16,7 +16,7 @@ final class OpenCEX_TokenOrderBook extends OpenCEX_OrderBook{
 	public function __construct(OpenCEX_L1_context $l1ctx, OpenCEX_token $primary, OpenCEX_token $secondary, bool $allow_buy = false, bool $allow_sell = false){
 		parent::__construct($l1ctx->get_safety_checker());
 		
-		$this->ctx->check_safety_2($GLOBALS["OpenCEX_orders_table_unlk"] || $GLOBALS["OpenCEX_ledger_unlk"], "Tables not properly locked!");
+		$this->ctx->check_safety_2($GLOBALS["OpenCEX_orders_table_unlk"], "Tables not properly locked!");
 		$this->ctx->usegas(1);
 		
 		$this->query2 = implode(["https://opencex-dev-worker.herokuapp.com/", urlencode(getenv("OpenCEX_shared_secret")), "/parallelCredit/"]);
