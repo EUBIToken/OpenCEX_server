@@ -409,6 +409,8 @@ $request_methods = ["non_atomic" => new class extends Request{
 		$token = $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, OpenCEX_SmartWalletManager $manager, string $token2){
 			switch($token2){
 				case "PolyEUBI":
+					$l1ctx->safe_query("LOCK TABLES Balances WRITE;");
+					$GLOBALS["OpenCEX_anything_locked"] = true;
 					return new OpenCEX_erc20_token($l1ctx, $token2, $manager, "0x553E77F7f71616382B1545d4457e2c1ee255FA7A", new OpenCEX_pseudo_token($l1ctx, "MATIC"));
 				default:
 					return new OpenCEX_native_token($l1ctx, $token2, $manager);
