@@ -51,6 +51,11 @@ final class OpenCEX_L1_context{
 		} else{
 			$this->container->check_safety($this->safe_query("UNLOCK TABLES;") === true, "UNLOCK TABLES returned invalid result!");
 		}
+		$GLOBALS["OpenCEX_anything_locked"] = false;
+		$GLOBALS["OpenCEX_ledger_unlk"] = true;
+		$GLOBALS["OpenCEX_orders_table_unlk"] = true;
+		
+		
 	}
 	
 	public function destroy(bool $commit = true){
@@ -297,12 +302,12 @@ abstract class OpenCEX_L2_context{
 	private bool $lock = false;
 	private $cached_envars = [];
 	
-	function lock_query(string $query){
+	public function lock_query(string $query){
 		$this->usegas(1);
 		$this->ctx->lock_query($query);
 	}
 	
-	function unlock_query(){
+	public function unlock_query(){
 		$this->usegas(1);
 		$this->ctx->unlock_query();
 	}
