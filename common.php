@@ -75,7 +75,7 @@ final class OpenCEX_L1_context{
 	public function __construct(OpenCEX_L2_context $container){
 		//Comsume an extra 100 gas, for the cost of database connection establishment.
 		$container->usegas(100);
-		$this->single_instance = $this->container->safe_getenv("OpenCEX_single_instance");
+		$this->single_instance = $this->container->safe_getenv("OpenCEX_single_instance") === "true";
 		$this->container = $container;
 		$temp_sql=mysqli_init();
 		if(getenv('OpenCEX_sql_ssl') === "true"){
