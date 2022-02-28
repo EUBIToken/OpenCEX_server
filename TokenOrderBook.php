@@ -6,10 +6,23 @@ final class OpenCEX_TokenOrderBook extends OpenCEX_OrderBook{
 	private $buy_prices = null;
 	private $sell_prices = null;
 	private int $last_rep = 1;
+	private $balances_l1_cache_token1 = [];
+	private $balances_l1_cache_token2 = [];
 	private string $query2;
 	
 	private function cred2(int $id2, string $token, OpenCEX_uint $amount){
-		$query2 = implode([$this->query2, strval($id2), "/", urlencode($token), "/", strval($amount)]);
+		$arr;
+		if($this->primary->name == $token){
+			$arr = &$this->balances_l1_cache_token1;
+		} else{
+			$this->ctx->check_safety($this->secondary->name == $token, "Invalid token!");
+			$arr = &$this->balances_l1_cache_token2;
+		}
+		if(array_key_exists($id2, $arr)){
+			$arr[$id2] = $arr[$id2]->add($amount);
+		} else{
+			$arr[$id2] = $amount;
+		}
 	}
 	
 	//NOTE: Order cancellations are handled by the request manager, not the matching engine.
@@ -100,7 +113,7 @@ final class OpenCEX_TokenOrderBook extends OpenCEX_OrderBook{
 	}
 	
 	//Flush order book to database
-	public function flush(){
+	public function flush(bool $ledgers = true){
 		$this->ctx->usegas(1);
 		//Append new orders
 		$noremove = [];
@@ -158,6 +171,21 @@ final class OpenCEX_TokenOrderBook extends OpenCEX_OrderBook{
 		$this->removed_orders = [];
 		$this->appended_orders = [];
 		$this->modded_orders = [];
+		
+		if($ledgers){
+			$nameappender = implode(urlencode($primary->name), ["/", "/"]);
+			foreach($this->balances_l1_cache_token1 as $key => $value){
+				$result = file_get_contents(implode([$this->query2, strval($key), $nameappender, strval($value)]));
+				$this->ctx->check_safety($result === "ok", "Worker returned error!");
+			}
+			$nameappender = implode(urlencode($secondary->name), ["/", "/"]);
+			foreach($this->balances_l1_cache_token1 as $key => $value){
+				$result = file_get_contents(implode([$this->query2, strval($key), $nameappender, strval($value)]));
+				$this->ctx->check_safety($result === "ok", "Worker returned error!");
+			}
+			$this->balances_l1_cache_token1 = [];
+			$this->balances_l1_cache_token2 = [];
+		}
 	}
 	
 	protected function order_execution_handler(OpenCEX_order $order, OpenCEX_uint $cost, OpenCEX_uint $output, bool $refund = true){
