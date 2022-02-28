@@ -27,7 +27,7 @@ final class OpenCEX_L1_context{
 	}
 	
 	public function unlock_query(){
-		$this->usegas(1);
+		$this->container->usegas(1);
 		if($this->single_instance){
 			$this->container->check_safety_2($this->oob_unlk, "OOB-CAS lock not acquired!");
 			$this->container->check_safety(rmdir("OpenCEX_lock"), "Unable to release OOB-CAS lock!");
