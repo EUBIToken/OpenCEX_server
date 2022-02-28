@@ -196,7 +196,8 @@ $request_methods = ["non_atomic" => new class extends Request{
 			//LOCK TABLES
 			$GLOBALS['OpenCEX_anything_locked'] = true;
 			$GLOBALS['OpenCEX_ledger_unlk'] = false;
-			$l1ctx->lock_query("LOCK TABLES Balances WRITE;");
+			$l1ctx->safe_query("LOCK TABLES Balances WRITE;");
+			$GLOBALS["OpenCEX_UNLK_OVRD"] = true;
 			
 			//Initialize database of balances, and debit amount from user
 			$primary = new OpenCEX_pseudo_token($l1ctx, $args2["primary"]);
@@ -305,7 +306,8 @@ $request_methods = ["non_atomic" => new class extends Request{
 }, "balances" => new class extends Request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		return $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, int $userid2, $allowed_tokens){
-			$l1ctx->lock_query("LOCK TABLE Balances READ;");
+			$l1ctx->safe_query("LOCK TABLE Balances READ;");
+			$GLOBALS["OpenCEX_UNLK_OVRD"] = true;
 			$result = $l1ctx->safe_query(implode(["SELECT Coin, Balance FROM Balances WHERE UserID = ", strval($userid2), " ORDER BY Coin;"]));
 			$l1ctx->unlock_query();
 			$ret = [];
@@ -420,7 +422,8 @@ $request_methods = ["non_atomic" => new class extends Request{
 		$token = $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, OpenCEX_SmartWalletManager $manager, string $token2){
 			switch($token2){
 				case "PolyEUBI":
-					$l1ctx->lock_query("LOCK TABLES Balances WRITE;");
+					$l1ctx->safe_query("LOCK TABLES Balances WRITE;");
+					$GLOBALS["OpenCEX_UNLK_OVRD"] = true;
 					$GLOBALS["OpenCEX_anything_locked"] = true;
 					return new OpenCEX_erc20_token($l1ctx, $token2, $manager, "0x553E77F7f71616382B1545d4457e2c1ee255FA7A", new OpenCEX_pseudo_token($l1ctx, "MATIC"));
 				default:

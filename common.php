@@ -2,6 +2,7 @@
 require_once("assert_exception.php");
 define("OpenCEX_dataset_version", 6);
 
+$GLOBALS["OpenCEX_UNLK_OVRD"] = false;
 //The L1 context contains raw SQL query methods. It hides anything that
 //we don't need from the L2 context, to maximize security
 final class OpenCEX_L1_context{
@@ -32,8 +33,11 @@ final class OpenCEX_L1_context{
 			$this->container->check_safety_2($this->oob_unlk, "OOB-CAS lock not acquired!");
 			$this->container->check_safety(rmdir("OpenCEX_lock"), "Unable to release OOB-CAS lock!");
 			$this->oob_unlk = true;
-		} else{
+		}
+		
+		if(!$this->single_instance || $GLOBALS["OpenCEX_UNLK_OVRD"]){
 			$this->container->check_safety($this->safe_query("UNLOCK TABLES;") === true, "UNLOCK TABLES returned invalid result!");
+			$GLOBALS["OpenCEX_UNLK_OVRD"] = false;
 		}
 	}
 	
