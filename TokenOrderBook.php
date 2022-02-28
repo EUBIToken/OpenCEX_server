@@ -173,12 +173,12 @@ final class OpenCEX_TokenOrderBook extends OpenCEX_OrderBook{
 		$this->modded_orders = [];
 		
 		if($ledgers){
-			$nameappender = implode(urlencode($primary->name), ["/", "/"]);
+			$nameappender = implode(urlencode($this->primary->name), ["/", "/"]);
 			foreach($this->balances_l1_cache_token1 as $key => $value){
 				$result = file_get_contents(implode([$this->query2, strval($key), $nameappender, strval($value)]));
 				$this->ctx->check_safety($result === "ok", "Worker returned error!");
 			}
-			$nameappender = implode(urlencode($secondary->name), ["/", "/"]);
+			$nameappender = implode(urlencode($this->secondary->name), ["/", "/"]);
 			foreach($this->balances_l1_cache_token1 as $key => $value){
 				$result = file_get_contents(implode([$this->query2, strval($key), $nameappender, strval($value)]));
 				$this->ctx->check_safety($result === "ok", "Worker returned error!");
