@@ -17,7 +17,7 @@ abstract class OpenCEX_token{
 		$this->ctx = $ctx;
 		$this->name = $name;
 		if($GLOBALS["OpenCEX_ledger_unlk"]){
-			$ctx->safe_query("LOCK TABLE Balances WRITE;");
+			$ctx->lock_query("LOCK TABLES Balances WRITE;");
 			$GLOBALS["OpenCEX_ledger_unlk"] = false;
 			$GLOBALS["OpenCEX_anything_locked"] = true;
 		}

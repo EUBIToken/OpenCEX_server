@@ -8,6 +8,35 @@ final class OpenCEX_L1_context{
 	private ?mysqli $sql;
 	private ?OpenCEX_L2_context $container;
 	private int $itx_count = 0;
+	public readonly bool $single_instance;
+	private bool $oob_unlk = true;
+	public function lock_query(string $query = ""){
+		$this->usegas(1);
+		if($this->single_instance){
+			//For single-server operation, we don't acquire MySQL table locks.
+			//We instead use out-of-band compare-and-swap (OOB-CAS) locking.
+			if($this->oob_unlk){
+				while(!mkdir("OpenCEX_lock")){
+					usleep(1);
+				}
+				$this->oob_unlk = false;
+			}
+		} else if($query != ""){
+			$this->container->check_safety($this->safe_query($query) === true, "LOCK TABLES returned invalid result!");
+		}
+	}
+	
+	public function unlock_query(){
+		$this->usegas(1);
+		if($this->single_instance){
+			$this->container->check_safety_2($this->oob_unlk, "OOB-CAS lock not acquired!");
+			$this->container->check_safety(rmdir("OpenCEX_lock"), "Unable to release OOB-CAS lock!");
+			$this->oob_unlk = true;
+		} else{
+			$this->container->check_safety($this->safe_query("UNLOCK TABLES;") === true, "UNLOCK TABLES returned invalid result!");
+		}
+	}
+	
 	public function destroy(bool $commit = true){
 		//Commit or revert transaction
 		if($commit){
@@ -43,10 +72,10 @@ final class OpenCEX_L1_context{
 		}
 	}
 	
-	
 	public function __construct(OpenCEX_L2_context $container){
 		//Comsume an extra 100 gas, for the cost of database connection establishment.
 		$container->usegas(100);
+		$this->single_instance = $this->container->safe_getenv("OpenCEX_single_instance");
 		$this->container = $container;
 		$temp_sql=mysqli_init();
 		if(getenv('OpenCEX_sql_ssl') === "true"){
@@ -89,13 +118,13 @@ final class OpenCEX_L1_context{
 			$container->check_safety($this->safe_query("START TRANSACTION;") === true, "MySQL BEGIN returned invalid status!");
 			
 			//Execute pending database upgrades
-			$this->safe_query("LOCK TABLE Misc WRITE;");
+			$this->lock_query("LOCK TABLE Misc WRITE;");
 			$result = $this->safe_query("SELECT Val FROM Misc WHERE Kei = 'version';");
 			if($result->num_rows == 0){
 				$result = OpenCEX_dataset_version;
 				$this->safe_query("INSERT INTO Misc (Kei, Val) VALUES ('version', '" . strval(OpenCEX_dataset_version) . "');");
 			} else{
-				$this->safe_query("UNLOCK TABLES;");
+				$this->unlock_query();
 				$container->check_safety($result->num_rows == 1, "Corrupted miscellaneous database!");
 				$result = intval($container->convcheck2($result->fetch_assoc(), "Val"));
 				if(OpenCEX_dataset_version > $result){
@@ -166,6 +195,7 @@ final class OpenCEX_L1_context{
 //enforce the principle of least privilidge.
 final class OpenCEX_safety_checker{
 	private readonly OpenCEX_L2_context $underlying;
+	
 	public function safe_getenv(string $env){
 		$this->usegas(1);
 		return $this->underlying->safe_getenv($env);
@@ -251,10 +281,24 @@ abstract class OpenCEX_L2_context{
 	private bool $lock = false;
 	private $cached_envars = [];
 	
+	function lock_query(string $query){
+		$this->usegas(1);
+		$this->ctx->lock_query($query);
+	}
+	
+	function unlock_query(){
+		$this->usegas(1);
+		$this->ctx->unlock_query();
+	}
+	
 	public function begin_emitting(){
 		$this->usegas(1);
 		$this->check_safety_2($this->ctx, "MySQL server already connected!");
 		$this->ctx = new OpenCEX_L1_context($this);
+	}
+	
+	public function is_single_server(){
+		$this->require_sql();
 	}
 	
 	public function safe_getenv(string $env){
@@ -512,8 +556,7 @@ abstract class OpenCEX_L2_context{
 	}
 	
 	public function unlock_tables(){
-		$this->usegas(1);
-		$result = $this->safe_query("UNLOCK TABLES;");
+		$this->unlock_query(); //Alias
 	}
 	
 	public function loadcharts(string $primary, string $secondary){

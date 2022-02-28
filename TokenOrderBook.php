@@ -11,6 +11,7 @@ final class OpenCEX_TokenOrderBook extends OpenCEX_OrderBook{
 	private string $query2;
 	
 	private function cred2(int $id2, string $token, OpenCEX_uint $amount){
+		$this->ctx->usegas(100); //For the cost of worker connection
 		$arr;
 		if($this->primary->name == $token){
 			$arr = &$this->balances_l1_cache_token1;
@@ -32,7 +33,7 @@ final class OpenCEX_TokenOrderBook extends OpenCEX_OrderBook{
 		$this->ctx->check_safety_2($GLOBALS["OpenCEX_orders_table_unlk"], "Tables not properly locked!");
 		$this->ctx->usegas(1);
 		
-		$this->query2 = implode(["https://opencex-dev-worker.herokuapp.com/", urlencode(getenv("OpenCEX_shared_secret")), "/parallelCredit/"]);
+		$this->query2 = implode([$this->ctx->safe_getenv("OpenCEX_worker"), urlencode($this->ctx->safe_getenv("OpenCEX_shared_secret")), "/parallelCredit/"]);
 		
 		$this->l1ctx = $l1ctx;
 		$this->primary = $primary;
