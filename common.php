@@ -11,7 +11,7 @@ final class OpenCEX_L1_context{
 	public readonly bool $single_instance;
 	private bool $oob_unlk = true;
 	public function lock_query(string $query = ""){
-		$this->usegas(1);
+		$this->container->usegas(1);
 		if($this->single_instance){
 			//For single-server operation, we don't acquire MySQL table locks.
 			//We instead use out-of-band compare-and-swap (OOB-CAS) locking.
