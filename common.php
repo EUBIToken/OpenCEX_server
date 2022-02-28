@@ -2,7 +2,6 @@
 require_once("assert_exception.php");
 define("OpenCEX_dataset_version", 6);
 
-$GLOBALS["OpenCEX_UNLK_OVRD"] = false;
 //The L1 context contains raw SQL query methods. It hides anything that
 //we don't need from the L2 context, to maximize security
 final class OpenCEX_L1_context{
@@ -11,6 +10,13 @@ final class OpenCEX_L1_context{
 	private int $itx_count = 0;
 	public readonly bool $single_instance;
 	private bool $oob_unlk = true;
+	private bool $balances_lock_ovrd = false;
+	public function lock_balances(bool $readonly = false){
+		$GLOBALS["OpenCEX_ledger_unlk"] = false;
+		$GLOBALS["OpenCEX_anything_locked"] = true;
+		$this->balances_lock_ovrd = true;
+		$this->container->check_safety($this->safe_query(implode(($readonly ? " READ" : " WRITE"), ["LOCK TABLES Balances", ";"])) === true, "LOCK TABLES returned invalid result!");
+	}
 	public function lock_query(string $query = ""){
 		$this->container->usegas(1);
 		if($this->single_instance){
@@ -30,14 +36,20 @@ final class OpenCEX_L1_context{
 	public function unlock_query(){
 		$this->container->usegas(1);
 		if($this->single_instance){
-			$this->container->check_safety_2($this->oob_unlk, "OOB-CAS lock not acquired!");
-			$this->container->check_safety(rmdir("OpenCEX_lock"), "Unable to release OOB-CAS lock!");
-			$this->oob_unlk = true;
-		}
-		
-		if(!$this->single_instance || $GLOBALS["OpenCEX_UNLK_OVRD"]){
+			if($this->oob_unlk){
+				$this->container->check_safety($this->balances_lock_ovrd, "OOB-CAS lock not acquired!");
+				$this->container->check_safety($this->safe_query("UNLOCK TABLES;") === true, "UNLOCK TABLES returned invalid result!");
+				$this->balances_lock_ovrd = false;
+			} else{
+				$this->container->check_safety(rmdir("OpenCEX_lock"), "Unable to release OOB-CAS lock!");
+				$this->oob_unlk = true;
+				if($this->balances_lock_ovrd){
+					$this->container->check_safety($this->safe_query("UNLOCK TABLES;") === true, "UNLOCK TABLES returned invalid result!");
+					$this->balances_lock_ovrd = false;
+				}
+			}
+		} else{
 			$this->container->check_safety($this->safe_query("UNLOCK TABLES;") === true, "UNLOCK TABLES returned invalid result!");
-			$GLOBALS["OpenCEX_UNLK_OVRD"] = false;
 		}
 	}
 	
