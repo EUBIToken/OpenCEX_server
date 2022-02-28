@@ -9,6 +9,10 @@ $OpenCEX_tempgas = false;
 function OpenCEX_error_handler($errno, string $message, string $file, int $line, $context = NULL)
 {
 	//NOTE: we treat all warnings as errors!
+	if($message === "mkdir(): File exists" && $file === "/app/common.php"){
+		//Ignore this, since we are performing OOB table locking.
+		return;
+	}
 	$temp_leaked_context = null;
 	if(array_key_exists("leaked_ctx", $GLOBALS)){
 		$temp_leaked_context = $GLOBALS["leaked_ctx"];
