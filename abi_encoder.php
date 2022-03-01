@@ -46,7 +46,9 @@ final class OpenCEX_abi_encoder{
 		if(substr($input, 0, 2) == "0x"){
 			$input = substr($input, 2);
 		}
-		foreach($input as $char){
+		$input = strtolower($input);
+		$input2 = str_split($input);
+		foreach($input2 as $char){
 			switch($char){
 				case "a":
 				case "b":
