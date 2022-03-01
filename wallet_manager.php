@@ -193,7 +193,7 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 		$balance2 = OpenCEX_uint::init($this->safety_checker, $this->manager->borrow(function(OpenCEX_BlockchainManagerWrapper $wrapper, string $x, string $y){
 			$wrapper->eth_call(["from" => "0x0000000000000000000000000000000000000000", "to" => $x, "data" => $y]);
 		}, $this->singleton, $this->abi2)[1][0]);
-		$transaction = ["from" => $this->manager->address, "to" => $this->singleton, "data" => ($this->abi . $balance2->tohex(false))];
+		$transaction = ["from" => $this->manager->address, "to" => $this->singleton, "data" => ($this->abi . $this->encoder->pad256($balance2->tohex(false)))];
 		$chainquotes = $this->manager->borrow(function(OpenCEX_BlockchainManagerWrapper $wrapper, string $address3, $transaction2){
 			$wrapper->eth_getTransactionCount($address3);
 			$wrapper->eth_gasPrice();

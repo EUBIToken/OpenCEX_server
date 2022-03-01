@@ -36,11 +36,36 @@ final class OpenCEX_abi_encoder{
 		$amtstr = $amount->tohex(false);
 		$this->ctx->check_safety(strlen($amtstr) < 65, "ERC-20 transfer amount overflow!");
 		
-		return implode(["0xa9059cbb", $this->chkvalidaddy($address), str_pad($amtstr, 64, "0", STR_PAD_LEFT)]);
+		return implode(["0xa9059cbb", $this->chkvalidaddy($address), $this->pad256($amtstr)]);
 	}
 	public function encode_erc20_balanceof(string $address){
 		$this->ctx->usegas(1);
 		return "0x70a08231" . $this->chkvalidaddy($address);
+	}
+	public function pad256(string $input, bool $prefix = false){
+		if(substr($input, 0, 2) == "0x"){
+			$input = substr($input, 2);
+		}
+		foreach($input as $char){
+			switch($char){
+				case "a":
+				case "b":
+				case "c":
+				case "d":
+				case "e":
+				case "f":
+					break;
+				default:
+					$this->ctx->check_safety(is_numeric($char), "Invalid input!");
+					break;
+			}
+		}
+		$this->ctx->check_safety(strlen($input) < 65, "Input too long!");
+		$input = str_pad($input, 64, "0", STR_PAD_LEFT);
+		if($prefix){
+			$input = "0x" . $input;
+		}
+		return $input;
 	}
 }
 ?>
