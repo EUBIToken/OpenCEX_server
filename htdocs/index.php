@@ -428,9 +428,10 @@ $request_methods = ["non_atomic" => new class extends Request{
 					$l1ctx->safe_query("LOCK TABLES Balances WRITE, Nonces WRITE;");
 					return new OpenCEX_erc20_token($l1ctx, $token2, $manager, "0x553E77F7f71616382B1545d4457e2c1ee255FA7A", new OpenCEX_pseudo_token($l1ctx, "MATIC"));
 				default:
-					$l1ctx->safe_query("LOCK TABLES Nonces WRITE;");
-					return new OpenCEX_native_token($l1ctx, $token2, $manager);
+					$ret2 = new OpenCEX_native_token($l1ctx, $token2, $manager);
 					$GLOBALS["OpenCEX_ledger_unlk"] = true;
+					$l1ctx->safe_query("LOCK TABLES Nonces WRITE;");
+					return $ret2;
 			}
 			
 		}, $wallet, $args["token"]);
