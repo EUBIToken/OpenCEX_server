@@ -44,7 +44,10 @@ final class OpenCEX_abi_encoder{
 	}
 	public function pad256(string $input, bool $prefix = false){
 		if(substr($input, 0, 2) == "0x"){
+			$this->ctx->check_safety(strlen($input) < 67, "Input too long!");
 			$input = substr($input, 2);
+		} else{
+			$this->ctx->check_safety(strlen($input) < 65, "Input too long!");
 		}
 		$input = strtolower($input);
 		$input2 = str_split($input);
@@ -62,7 +65,7 @@ final class OpenCEX_abi_encoder{
 					break;
 			}
 		}
-		$this->ctx->check_safety(strlen($input) < 65, "Input too long!");
+		
 		$input = str_pad($input, 64, "0", STR_PAD_LEFT);
 		if($prefix){
 			$input = "0x" . $input;
