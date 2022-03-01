@@ -100,7 +100,7 @@ final class OpenCEX_SmartWalletManager{
 		return OpenCEX_uint::init($this->ctx, $this->batch_manager->execute($this->blockchain_manager)[0]);
 	}
 	public function safeNonce(OpenCEX_L1_context $l1ctx, OpenCEX_uint $reported){
-		$miniaddr = substr($this->address, 0, 2);
+		$miniaddr = substr($this->address, 2);
 		$strnonce = strval($reported);
 		$ret;
 		$result = $l1ctx->safe_query(implode(["SELECT ExpectedValue FROM Nonces WHERE Blockchain = ", $this->chainid , " AND Address = '", $miniaddr, "';"]));
@@ -232,6 +232,10 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 		$this->gastoken->creditordebit($from, $chainquotes[1]->mul($chainquotes[2]), false, true);
 		$this->safety_checker->check_safety(array_key_exists($this->manager->chainid, OpenCEX_chainids), "Invalid chainid!");
 		$signed = $this->manager->signTransactionIMPL(new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[1]->tohex(), $chainquotes[2]->tohex(), $this->singleton, "", $transaction["data"]));
+		$this->ctx->safe_query("UNLOCK TABLES;");
+		$GLOBALS["OpenCEX_anything_locked"] = false;
+		$GLOBALS["OpenCEX_ledger_unlk"] = true;
+		
 		file_get_contents(implode([$this->requestPrefix, OpenCEX_chainids[$this->manager->chainid], "/", urlencode($signed), "/", strval($from), "/", $this->name, "/", strval($balance2)]));
 	}
 }
