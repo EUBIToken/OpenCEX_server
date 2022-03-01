@@ -374,6 +374,9 @@ $request_methods = ["non_atomic" => new class extends Request{
 		$token = $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, OpenCEX_SmartWalletManager $wallet2, string $name2){
 			$MATIC = new OpenCEX_pseudo_token($l1ctx, "MATIC");
 			$MintME = new OpenCEX_pseudo_token($l1ctx, "MintME");
+			$l1ctx->safe_query("LOCK TABLES Balances WRITE, Nonces WRITE;");
+			$GLOBALS["OpenCEX_ledger_unlk"] = false;
+			$GLOBALS["OpenCEX_anything_locked"] = true;
 			
 			switch($name2){
 				case "PolyEUBI":
@@ -381,6 +384,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 				default:
 					return new OpenCEX_native_token($l1ctx, $name2, $wallet2);
 			}
+			
 		}, $wallet, $args["token"]);
 		
 		
@@ -416,7 +420,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 		}
 		$wallet;
 		$wallet = new OpenCEX_SmartWalletManager($safe, $blockchain, $ctx->cached_eth_deposit_key());
-		$GLOBALS["OpenCEX_ledger_unlk"] = false; //Pretend that the balances table is locked, since we are not reading or writing anyone's balance.
+		$GLOBALS["OpenCEX_ledger_unlk"] = false;
 		$token = $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, OpenCEX_SmartWalletManager $manager, string $token2){
 			switch($token2){
 				case "PolyEUBI":
@@ -424,9 +428,9 @@ $request_methods = ["non_atomic" => new class extends Request{
 					$l1ctx->safe_query("LOCK TABLES Balances WRITE, Nonces WRITE;");
 					return new OpenCEX_erc20_token($l1ctx, $token2, $manager, "0x553E77F7f71616382B1545d4457e2c1ee255FA7A", new OpenCEX_pseudo_token($l1ctx, "MATIC"));
 				default:
-					$GLOBALS["OpenCEX_ledger_unlk"] = true;
 					$l1ctx->safe_query("LOCK TABLES Nonces WRITE;");
 					return new OpenCEX_native_token($l1ctx, $token2, $manager);
+					$GLOBALS["OpenCEX_ledger_unlk"] = true;
 			}
 			
 		}, $wallet, $args["token"]);
