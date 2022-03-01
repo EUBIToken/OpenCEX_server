@@ -148,23 +148,24 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 	private readonly OpenCEX_SmartWalletManager $manager;
 	private readonly OpenCEX_token $gastoken;
 	private readonly string $tracked;
-	private readonly string $actual;
+	private readonly string $singleton;
+	private readonly string $formattedTokenAddress;
+	private readonly string $abi2;
+	
 	public function __construct(OpenCEX_L1_context $l1ctx, string $name, OpenCEX_SmartWalletManager $manager, string $token_address, OpenCEX_token $gastoken){
 		parent::__construct($l1ctx, $name);
 		$this->safety_checker->usegas(1);
 		$this->encoder = new OpenCEX_abi_encoder($this->safety_checker);
 		$this->tracked = $manager->address;
 		$manager = $manager->reconstruct();
-		$this->abi = implode(["0x8a738683", $this->encoder->chkvalidaddy($token_address), $this->encoder->chkvalidaddy($this->tracked)]);
+		$this->formattedTokenAddress = $this->encoder->chkvalidaddy($token_address);
+		$postfix = $this->formattedTokenAddress . $this->encoder->chkvalidaddy($this->tracked);
+		$this->abi = "0x64d7cd50" . $this->postfix;
+		$this->abi2 = implode(["0xaec6ed90", $this->encoder->chkvalidaddy($manager->address), $this->postfix]);
 		$this->manager = $manager;
-		$ret2 = $manager->borrow(function(OpenCEX_BlockchainManagerWrapper $wrapper, OpenCEX_SmartWalletManager $manager2, string $tracked){
-			$singleton = OpenCEX_chainids[$manager2->chainid] === "polygon" ? "0x18a2db82061979e6e7d963cc3a21bcf6b6adef9b" : "0x98ecc85b24e0041c208c21aafba907cd74f9ded6";
-			$encoded = implode(["0xe8aaeb54000000000000000000000000", substr($manager2->address, 2), "000000000000000000000000", substr($tracked, 2)]);
-			$wrapper->eth_call(["from" => "0x0000000000000000000000000000000000000000", "to" => $singleton, "data" => $encoded]);
-		}, $manager, $this->tracked);
-		$this->actual = "0x" . substr($ret2[1][0], 26);
 		$this->token_address = $token_address;
 		$this->gastoken = $gastoken;
+		$this->singleton = OpenCEX_chainids[$this->manager->chainid] === "polygon" ? "0x18a2db82061979e6e7d963cc3a21bcf6b6adef9b" : "0x98ecc85b24e0041c208c21aafba907cd74f9ded6";
 	}
 	public function send(int $from, string $address, OpenCEX_uint $amount, bool $sync = true){
 		$this->safety_checker->usegas(1);
@@ -188,19 +189,21 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 	
 	public function sweep(int $from){
 		$this->safety_checker->usegas(1);
-		$singleton = OpenCEX_chainids[$this->manager->chainid] === "polygon" ? "0x18a2db82061979e6e7d963cc3a21bcf6b6adef9b" : "0x98ecc85b24e0041c208c21aafba907cd74f9ded6";
-		$transaction = ["from" => $this->manager->address, "to" => $singleton, "data" => $this->abi];
+		
+		$balance2 = OpenCEX_uint::init($this->safety_checker, $this->manager->borrow(function(OpenCEX_BlockchainManagerWrapper $wrapper, string $x, string $y){
+			$wrapper->eth_call(["from" => "0x0000000000000000000000000000000000000000", "to" => $x, "data" => $y]);
+		}, $this->singleton, $this->abi2)[1][0]);
+		$transaction = ["from" => $this->manager->address, "to" => $this->singleton, "data" => ($this->abi . strval($balance2))];
 		$chainquotes = $this->manager->borrow(function(OpenCEX_BlockchainManagerWrapper $wrapper, string $address3, $transaction2){
 			$wrapper->eth_getTransactionCount($address3);
 			$wrapper->eth_gasPrice();
 			$wrapper->eth_estimateGas($transaction2);
-			$wrapper->eth_call(["from" => "0x0000000000000000000000000000000000000000", "to" => $this->token_address, "data" => ("0x70a08231000000000000000000000000" . substr($this->actual, 2))]);
 		}, $this->manager->address, $transaction)[1];
 		
 		$this->gastoken->creditordebit($from, $chainquotes[1]->mul($chainquotes[2]), false, true);
 		$this->safety_checker->check_safety(array_key_exists($this->manager->chainid, OpenCEX_chainids), "Invalid chainid!");
-		$signed = $this->manager->signTransactionIMPL(new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[1]->tohex(), $chainquotes[2]->tohex(), $singleton, "", $transaction["data"]));
-		file_get_contents(implode([$this->safety_checker->safe_getenv("OpenCEX_worker"), urlencode(strval($this->safety_checker->safe_getenv("OpenCEX_shared_secret"))), "/sendAndCreditWhenSecure/", OpenCEX_chainids[$this->manager->chainid], "/", urlencode($signed), "/", strval($from), "/", $this->name, "/", strval(OpenCEX_uint::init($this->safety_checker, $chainquotes[3]))]));
+		$signed = $this->manager->signTransactionIMPL(new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[1]->tohex(), $chainquotes[2]->tohex(), $this->singleton, "", $transaction["data"]));
+		file_get_contents(implode([$this->safety_checker->safe_getenv("OpenCEX_worker"), urlencode(strval($this->safety_checker->safe_getenv("OpenCEX_shared_secret"))), "/sendAndCreditWhenSecure/", OpenCEX_chainids[$this->manager->chainid], "/", urlencode($signed), "/", strval($from), "/", $this->name, "/", strval($balance2)]));
 	}
 }
 ?>
