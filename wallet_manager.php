@@ -99,6 +99,30 @@ final class OpenCEX_SmartWalletManager{
 		$this->wallet->balanceOf($token_addy);
 		return OpenCEX_uint::init($this->ctx, $this->batch_manager->execute($this->blockchain_manager)[0]);
 	}
+	public function safeNonce(OpenCEX_L1_context $l1ctx, string $coin, OpenCEX_uint $reported){
+		$GLOBALS["OpenCEX_ledger_unlk"] = false;
+		$GLOBALS["OpenCEX_orders_table_unlk"] = false;
+		$GLOBALS["OpenCEX_anything_locked"] = false;
+		$l1ctx->safe_query("LOCK TABLE Nonces WRITE;");
+		$miniaddr = substr($this->address, 0, 2);
+		$strnonce = strval($reported);
+		$ret;
+		$result = $l1ctx->safe_query(implode(["SELECT ExpectedValue FROM Nonces WHERE Blockchain = ", $this->chainid , " AND Address = '", $miniaddr, "';"]));
+		if($result->num_rows == 0){
+			$l1ctx->safe_query(implode(["INSERT INTO Nonces (ExpectedValue, Blockchain, Address) VALUES (", $strnonce, ", ", $this->chainid, ", '", $miniaddr, "');"]));
+			$ret = $reported; //Use latest nonce
+		} else{
+			//Fetch nonce from database
+			$this->ctx->check_safety($result->num_rows == 1, "Accidental transaction cancellation prevention database corrupted!");
+			$result = OpenCEX_uint::init($this->ctx, $this->ctx->convcheck2($result->fetch_assoc(), "ExpectedValue"));
+			
+			//Perform safety checks
+			$this->ctx->check_safety_2($reported->comp($result) == 1, "Exchange wallet compromise suspected!");
+			$ret = $result; //Use nonce in database
+		}
+		$l1ctx->safe_query("UNLOCK TABLES;");
+		return $ret;
+	}
 }
 define("OpenCEX_chainids", [24734 => "mintme", 137 => "polygon"]);
 define("OpenCEX_tokenchains", ["PolyEUBI" => "polygon"]);
