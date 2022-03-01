@@ -8,55 +8,6 @@ final class OpenCEX_L1_context{
 	private ?mysqli $sql;
 	private ?OpenCEX_L2_context $container;
 	private int $itx_count = 0;
-	public readonly bool $single_instance;
-	private bool $oob_unlk = true;
-	private bool $balances_lock_ovrd = false;
-	public function lock_balances(bool $readonly = false){
-		$GLOBALS["OpenCEX_ledger_unlk"] = false;
-		$GLOBALS["OpenCEX_anything_locked"] = true;
-		$this->balances_lock_ovrd = true;
-		$this->container->check_safety($this->safe_query(implode(($readonly ? " READ" : " WRITE"), ["LOCK TABLES Balances", ";"])) === true, "LOCK TABLES returned invalid result!");
-	}
-	public function lock_query(string $query = ""){
-		$this->container->usegas(1);
-		if($this->single_instance){
-			//For single-server operation, we don't acquire MySQL table locks.
-			//We instead use out-of-band compare-and-swap (OOB-CAS) locking.
-			if($this->oob_unlk){
-				while(!mkdir("OpenCEX_lock")){
-					usleep(1);
-				}
-				$this->oob_unlk = false;
-			}
-		} else if($query != ""){
-			$this->container->check_safety($this->safe_query($query) === true, "LOCK TABLES returned invalid result!");
-		}
-	}
-	
-	public function unlock_query(){
-		$this->container->usegas(1);
-		if($this->single_instance){
-			if($this->oob_unlk){
-				$this->container->check_safety($this->balances_lock_ovrd, "OOB-CAS lock not acquired!");
-				$this->container->check_safety($this->safe_query("UNLOCK TABLES;") === true, "UNLOCK TABLES returned invalid result!");
-				$this->balances_lock_ovrd = false;
-			} else{
-				$this->container->check_safety(rmdir("OpenCEX_lock"), "Unable to release OOB-CAS lock!");
-				$this->oob_unlk = true;
-				if($this->balances_lock_ovrd){
-					$this->container->check_safety($this->safe_query("UNLOCK TABLES;") === true, "UNLOCK TABLES returned invalid result!");
-					$this->balances_lock_ovrd = false;
-				}
-			}
-		} else{
-			$this->container->check_safety($this->safe_query("UNLOCK TABLES;") === true, "UNLOCK TABLES returned invalid result!");
-		}
-		$GLOBALS["OpenCEX_anything_locked"] = false;
-		$GLOBALS["OpenCEX_ledger_unlk"] = true;
-		$GLOBALS["OpenCEX_orders_table_unlk"] = true;
-		
-		
-	}
 	
 	public function destroy(bool $commit = true){
 		//Commit or revert transaction
@@ -96,7 +47,6 @@ final class OpenCEX_L1_context{
 	public function __construct(OpenCEX_L2_context $container){
 		//Comsume an extra 100 gas, for the cost of database connection establishment.
 		$container->usegas(100);
-		$this->single_instance = $container->safe_getenv("OpenCEX_single_instance") === "true";
 		$this->container = $container;
 		$temp_sql=mysqli_init();
 		if(getenv('OpenCEX_sql_ssl') === "true"){
@@ -139,13 +89,13 @@ final class OpenCEX_L1_context{
 			$container->check_safety($this->safe_query("START TRANSACTION;") === true, "MySQL BEGIN returned invalid status!");
 			
 			//Execute pending database upgrades
-			$this->lock_query("LOCK TABLE Misc WRITE;");
+			$this->safe_query("LOCK TABLE Misc WRITE;");
 			$result = $this->safe_query("SELECT Val FROM Misc WHERE Kei = 'version';");
 			if($result->num_rows == 0){
 				$result = OpenCEX_dataset_version;
 				$this->safe_query("INSERT INTO Misc (Kei, Val) VALUES ('version', '" . strval(OpenCEX_dataset_version) . "');");
 			} else{
-				$this->unlock_query();
+				$this->safe_query("UNLOCK TABLES;");
 				$container->check_safety($result->num_rows == 1, "Corrupted miscellaneous database!");
 				$result = intval($container->convcheck2($result->fetch_assoc(), "Val"));
 				if(OpenCEX_dataset_version > $result){
@@ -304,12 +254,12 @@ abstract class OpenCEX_L2_context{
 	
 	public function lock_query(string $query){
 		$this->usegas(1);
-		$this->ctx->lock_query($query);
+		$this->ctx->safe_query($query);
 	}
 	
 	public function unlock_query(){
 		$this->usegas(1);
-		$this->ctx->unlock_query();
+		$this->ctx->safe_query("UNLOCK TABLES;");
 	}
 	
 	public function begin_emitting(){
@@ -577,7 +527,7 @@ abstract class OpenCEX_L2_context{
 	}
 	
 	public function unlock_tables(){
-		$this->unlock_query(); //Alias
+		$this->safe_query("UNLOCK TABLES;"); //Alias
 	}
 	
 	public function loadcharts(string $primary, string $secondary){

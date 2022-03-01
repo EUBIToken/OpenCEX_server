@@ -196,7 +196,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 			//LOCK TABLES
 			$GLOBALS['OpenCEX_anything_locked'] = true;
 			$GLOBALS['OpenCEX_ledger_unlk'] = false;
-			$l1ctx->lock_balances();
+			$l1ctx->safe_query("LOCK TABLES Balances WRITE;");
 			
 			//Initialize database of balances, and debit amount from user
 			$primary = new OpenCEX_pseudo_token($l1ctx, $args2["primary"]);
@@ -209,7 +209,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 			
 			$GLOBALS['OpenCEX_ledger_unlk'] = true;
 			$GLOBALS['OpenCEX_orders_table_unlk'] = false;
-			$l1ctx->lock_query("LOCK TABLES Orders WRITE, Misc WRITE;");
+			$l1ctx->safe_query("LOCK TABLES Orders WRITE, Misc WRITE;");
 			
 			//Increment orders counter
 			$result = $l1ctx->safe_query("SELECT Val FROM Misc WHERE Kei = 'OrderCounter';");
@@ -236,7 +236,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 			if($new_close){
 				$primary = $args2["primary"];
 				$secondary = $args2["secondary"];
-				$l1ctx->lock_query("LOCK TABLES HistoricalPrices WRITE;");
+				$l1ctx->safe_query("LOCK TABLES HistoricalPrices WRITE;");
 				$GLOBALS["OpenCEX_orders_table_unlk"] = true;
 				$GLOBALS["OpenCEX_ledger_unlk"] = true;
 				$prepared = $l1ctx->safe_prepare("SELECT Timestamp, Open, High, Low, Close FROM HistoricalPrices WHERE Pri = ? AND Sec = ? ORDER BY Timestamp DESC LIMIT 1;");
@@ -305,9 +305,9 @@ $request_methods = ["non_atomic" => new class extends Request{
 }, "balances" => new class extends Request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		return $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, int $userid2, $allowed_tokens){
-			$l1ctx->lock_balances(true);
+			$l1ctx->safe_query("LOCK TABLE Balances WRITE");
 			$result = $l1ctx->safe_query(implode(["SELECT Coin, Balance FROM Balances WHERE UserID = ", strval($userid2), " ORDER BY Coin;"]));
-			$l1ctx->unlock_query();
+			$l1ctx->safe_query("UNLOCK TABLES;");
 			$ret = [];
 			$found_coins = [];
 			if($result->num_rows > 0){
@@ -421,7 +421,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 			switch($token2){
 				case "PolyEUBI":
 					$l1ctx->safe_query("LOCK TABLES Balances WRITE;");
-					$l1ctx->lock_balances();
+					$l1ctx->safe_query("LOCK TABLES Balances WRITE;");
 					$GLOBALS["OpenCEX_anything_locked"] = true;
 					return new OpenCEX_erc20_token($l1ctx, $token2, $manager, "0x553E77F7f71616382B1545d4457e2c1ee255FA7A", new OpenCEX_pseudo_token($l1ctx, "MATIC"));
 				default:
@@ -441,9 +441,9 @@ $request_methods = ["non_atomic" => new class extends Request{
 }, "load_active_orders" => new class extends Request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		return $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, int $userid2){
-			$l1ctx->lock_query("LOCK TABLE Orders READ;");
+			$l1ctx->safe_query("LOCK TABLE Orders READ;");
 			$result = $l1ctx->safe_query(implode(["SELECT Pri, Sec, Price, InitialAmount, TotalCost, Id, Buy FROM Orders WHERE PlacedBy = ", strval($userid2), ";"]));
-			$l1ctx->unlock_query();
+			$l1ctx->safe_query("UNLOCK TABLES;");
 			$ret = [];
 			if($result->num_rows > 0){
 				$checker = $l1ctx->get_safety_checker();
@@ -471,7 +471,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 		$ctx->check_safety(is_string($args["target"]), "Target must be string!");
 		$ctx->check_safety(is_numeric($args["target"]), "Target must be numeric!");
 		$result = $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, string $target){
-			$l1ctx->lock_query("LOCK TABLE Orders WRITE, Sessions READ, Accounts READ;");
+			$l1ctx->safe_query("LOCK TABLE Orders WRITE, Sessions READ, Accounts READ;");
 			$GLOBALS["OpenCEX_anything_locked"] = true;
 			$GLOBALS["OpenCEX_orders_table_unlk"] = false;
 			$res2 = $l1ctx->safe_query(implode(['SELECT PlacedBy, Pri, Sec, InitialAmount, TotalCost, Buy FROM Orders WHERE Id = "', $target, '";']));
@@ -489,7 +489,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 			$query2 = implode([$this->ctx->safe_getenv("OpenCEX_worker"), urlencode($ctx2->safe_getenv("OpenCEX_shared_secret")), "/parallelCredit/", strval($id2), "/", urlencode($safe->convcheck2($res2, ($safe->convcheck2($res2, "Buy") == "1") ? "Pri" : "Sec")), "/", strval($remains)]);
 			$safe->check_safety(file_get_contents($query2) === "ok", "Balance update failed!");
 			$GLOBALS["OpenCEX_orders_table_unlk"] = true;
-			$l1ctx->unlock_query();
+			$l1ctx->safe_query("UNLOCK TABLES;");
 		}, $args["target"], new OpenCEX_safety_checker($ctx), $ctx, $result, $id);
 		
 		
