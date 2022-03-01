@@ -602,15 +602,24 @@ try{
 	$leaked_ctx = null;
 	$ctx->finish_emitting();
 } catch (OpenCEX_assert_exception $e){
-	die('{"status": "error", "reason": "' . escapeJsonString($e->getMessage()) . '"}');
+	if(getenv("OpenCEX_devserver") === "true"){
+		$e = strval($e);
+	} else{
+		$e = $e->getMessage();
+	}
+	die('{"status": "error", "reason": "' . escapeJsonString($e) . '"}');
 } catch (Exception $e){
 	//NOTE: if we fail due to unexpected exception, we must destroy the context!
 	//Automatic context destruction only occours for OpenCEX_assert_exceptions.
 	if(!is_null($leaked_ctx)){
 		$leaked_ctx->destroy();
 	}
-		
-	$fail_message = '{"status": "error", "reason": "Unexpected internal server error: ' . escapeJsonString($e->getMessage()) . '"}';
+	if(getenv("OpenCEX_devserver") === "true"){
+		$e = strval($e);
+	} else{
+		$e = $e->getMessage();
+	}
+	$fail_message = '{"status": "error", "reason": "Unexpected internal server error: ' . escapeJsonString($e) . '"}';
 	die($fail_message);
 }
 
