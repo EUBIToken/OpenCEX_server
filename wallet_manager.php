@@ -111,14 +111,13 @@ final class OpenCEX_SmartWalletManager{
 			//Fetch nonce from database
 			$this->ctx->check_safety($result->num_rows == 1, "Accidental transaction cancellation prevention database corrupted!");
 			$result = OpenCEX_uint::init($this->ctx, $this->ctx->convcheck2($result->fetch_assoc(), "ExpectedValue"));
-			$one = OpenCEX_uint::init($this->ctx, "1");
-			$result = $result->add($one);
+			$result = $result->add(OpenCEX_uint::init($this->ctx, "1"));
 			
 			//Perform safety checks
 			$this->ctx->check_safety_2($reported->comp($result) == 1, "Exchange wallet compromise suspected!");
 			
 			//Update nonce in database
-			$l1ctx->safe_query(implode(["UPDATE Nonces SET ExpectedValue = ", strval($result), $selector]));
+			$l1ctx->safe_query(implode(["UPDATE Nonces SET ExpectedValue = '", strval($result), "'", $selector]));
 			
 			return $result;
 		}
