@@ -99,11 +99,7 @@ final class OpenCEX_SmartWalletManager{
 		$this->wallet->balanceOf($token_addy);
 		return OpenCEX_uint::init($this->ctx, $this->batch_manager->execute($this->blockchain_manager)[0]);
 	}
-	public function safeNonce(OpenCEX_L1_context $l1ctx, string $coin, OpenCEX_uint $reported){
-		$GLOBALS["OpenCEX_ledger_unlk"] = false;
-		$GLOBALS["OpenCEX_orders_table_unlk"] = false;
-		$GLOBALS["OpenCEX_anything_locked"] = false;
-		$l1ctx->safe_query("LOCK TABLE Nonces WRITE;");
+	public function safeNonce(OpenCEX_L1_context $l1ctx, OpenCEX_uint $reported){
 		$miniaddr = substr($this->address, 0, 2);
 		$strnonce = strval($reported);
 		$ret;
@@ -120,7 +116,6 @@ final class OpenCEX_SmartWalletManager{
 			$this->ctx->check_safety_2($reported->comp($result) == 1, "Exchange wallet compromise suspected!");
 			$ret = $result; //Use nonce in database
 		}
-		$l1ctx->safe_query("UNLOCK TABLES;");
 		return $ret;
 	}
 }
@@ -150,8 +145,9 @@ final class OpenCEX_native_token extends OpenCEX_token{
 			$wrapper->eth_estimateGas($transaction2);
 			$wrapper->eth_gasPrice();
 		}, $address, $amount, $transaction, $this->manager->address)[1];
-		$this->creditordebit($from, $amount->add($chainquotes[1]->mul($chainquotes[2])), false, $sync);
 		
+		$chainquotes[0] = $this->manager->safeNonce($this->ctx, $chainquotes[0]);
+		$this->creditordebit($from, $amount->add($chainquotes[1]->mul($chainquotes[2])), false, $sync);
 		$this->manager->sendTransactionIMPL(new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[2]->tohex(), $chainquotes[1]->tohex(), $address, $transaction["value"]));
 		
 	}
@@ -162,6 +158,8 @@ final class OpenCEX_native_token extends OpenCEX_token{
 			$wrapper->eth_gasPrice();
 			$wrapper->eth_getBalance($address3);
 		}, $this->manager->address)[1];
+		
+		$chainquotes[0] = $this->manager->safeNonce($this->ctx, $chainquotes[0]);
 		$remains = $chainquotes[2]->sub($chainquotes[1]->mul(OpenCEX_uint::init($this->safety_checker, "21000")), "Amount not enough to cover blockchain fee!");
 		$this->safety_checker->check_safety(array_key_exists($this->manager->chainid, OpenCEX_chainids), "Invalid chainid!");
 		file_get_contents(implode([$this->requestPrefix, OpenCEX_chainids[$this->manager->chainid], "/", $this->manager->signTransactionIMPL(new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[1]->tohex(), "0x5208", $this->manager->reconstruct()->address, $remains->tohex())), "/", strval($from), "/", $this->name, "/", strval($remains)]));
@@ -208,6 +206,8 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 			$wrapper->eth_estimateGas($transaction2);
 			$wrapper->eth_gasPrice();
 		}, $address, $amount, $transaction, $this->manager->address)[1];
+		
+		$chainquotes[0] = $this->manager->safeNonce($this->ctx, $chainquotes[0]);
 		$this->gastoken->creditordebit($from, $chainquotes[1]->mul($chainquotes[2]), false, $sync);
 		$this->creditordebit($from, $amount, false, $sync);
 		
@@ -228,6 +228,7 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 			$wrapper->eth_estimateGas($transaction2);
 		}, $this->manager->address, $transaction)[1];
 		
+		$chainquotes[0] = $this->manager->safeNonce($this->ctx, $chainquotes[0]);
 		$this->gastoken->creditordebit($from, $chainquotes[1]->mul($chainquotes[2]), false, true);
 		$this->safety_checker->check_safety(array_key_exists($this->manager->chainid, OpenCEX_chainids), "Invalid chainid!");
 		$signed = $this->manager->signTransactionIMPL(new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[1]->tohex(), $chainquotes[2]->tohex(), $this->singleton, "", $transaction["data"]));

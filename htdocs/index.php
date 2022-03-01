@@ -421,10 +421,11 @@ $request_methods = ["non_atomic" => new class extends Request{
 			switch($token2){
 				case "PolyEUBI":
 					$GLOBALS["OpenCEX_anything_locked"] = true;
-					$l1ctx->safe_query("LOCK TABLES Balances WRITE;");
+					$l1ctx->safe_query("LOCK TABLES Balances WRITE, Nonces WRITE;");
 					return new OpenCEX_erc20_token($l1ctx, $token2, $manager, "0x553E77F7f71616382B1545d4457e2c1ee255FA7A", new OpenCEX_pseudo_token($l1ctx, "MATIC"));
 				default:
 					$GLOBALS["OpenCEX_ledger_unlk"] = true;
+					$l1ctx->safe_query("LOCK TABLES Nonces WRITE;");
 					return new OpenCEX_native_token($l1ctx, $token2, $manager);
 			}
 			
