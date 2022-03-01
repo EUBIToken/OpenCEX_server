@@ -160,7 +160,7 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 		$manager = $manager->reconstruct();
 		$this->formattedTokenAddress = $this->encoder->chkvalidaddy($token_address);
 		$postfix = $this->formattedTokenAddress . $this->encoder->chkvalidaddy($this->tracked);
-		$this->abi = "0x64d7cd50" . $this->postfix;
+		$this->abi = "0x64d7cd50" . $postfix;
 		$this->abi2 = implode(["0xaec6ed90", $this->encoder->chkvalidaddy($manager->address), $this->postfix]);
 		$this->manager = $manager;
 		$this->token_address = $token_address;
