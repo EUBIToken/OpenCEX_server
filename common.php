@@ -331,10 +331,8 @@ abstract class OpenCEX_L2_context{
 	
 	public function finish_emitting(bool $commit = true){
 		if($this->ctx){
-			$this->check_safety_2($commit & $this->lock, "Commit not allowed with context locked!");
 			$ctx = $this->ctx;
 			$this->ctx = null;
-			$this->lock = false;
 			$ctx->destroy($commit);
 			$ctx->keepalive();
 		} else{
@@ -374,7 +372,6 @@ abstract class OpenCEX_L2_context{
 	
 	private function require_sql(){
 		$this->usegas(1);
-		$this->check_safety_2($this->lock, "MySQL queries disabled!");
 		$this->check_safety($this->ctx, "MySQL server not connected!");
 	}
 	
@@ -410,12 +407,6 @@ abstract class OpenCEX_L2_context{
 			$return = $callable($this->ctx, ...$args);
 		} catch(Exception $e){
 			$deferredthrow = $e;
-		}
-		if($this->lock){
-			$this->lock = false;
-		} else{
-			//If the context gets unlocked by the borrower, and no exceptions are thrown, we assert.
-			$this->check_safety_2(is_null($deferredthrow), "L2 context unlocked by SQL borrower (should not reach here)!");
 		}
 		if(is_null($deferredthrow)){
 			return $return;
