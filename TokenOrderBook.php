@@ -33,7 +33,7 @@ final class OpenCEX_TokenOrderBook extends OpenCEX_OrderBook{
 		$this->ctx->check_safety($l1ctx->orders_locked(), "Tables not properly locked!");
 		$this->ctx->usegas(1);
 		
-		$this->query2 = implode([$this->ctx->safe_getenv("OpenCEX_worker"), urlencode($this->ctx->safe_getenv("OpenCEX_shared_secret")), "/parallelCredit/"]);
+		$this->query2 = implode([$this->ctx->safe_getenv("OpenCEX_worker"), "/", urlencode($this->ctx->safe_getenv("OpenCEX_shared_secret")), "/parallelCredit/"]);
 		
 		$this->l1ctx = $l1ctx;
 		$this->primary = $primary;
