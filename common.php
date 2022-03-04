@@ -403,9 +403,8 @@ abstract class OpenCEX_L2_context{
 		$return = null;
 		$deferredthrow = null;
 		
-		//NOTE: We disable SQL queries from the L2 context while exclusive
-		//SQL access is granted to another function.
-		$this->lock = true;
+		//We are not locking the context while SQL is borrowed, since it negatively
+		//interacts with changes from the previous security hardening.
 		
 		try{
 			$return = $callable($this->ctx, ...$args);
