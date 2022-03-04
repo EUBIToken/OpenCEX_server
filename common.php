@@ -242,7 +242,7 @@ abstract class OpenCEX_L2_context{
 	public abstract function get_active_session_token();
 	public abstract function check_safety($predicate, string $message = "", int $id = 0);
 	public abstract function check_safety_2($predicate, string $message = "", int $id = 0);
-	public abstract function convcheck2($result, $key, int $id = 0);
+	public abstract function convcheck2($result, string $key, int $id = 0);
 	public abstract function usegas(int $amount, int $id = 0);
 	public abstract function cleargas();
 	public abstract function get_cached_user_id();
