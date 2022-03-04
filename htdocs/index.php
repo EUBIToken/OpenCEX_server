@@ -147,11 +147,12 @@ $request_methods = ["non_atomic" => new class extends Request{
 	}
 }, "get_test_tokens" => new class extends Request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
+		$cachedid = $ctx->get_cached_user_id();
 		$ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, int $userid2){
 			//NOTE: We use nested transactions to ensure that the lock is properly released!
 			(new OpenCEX_pseudo_token($l1ctx, "shitcoin"))->creditordebit($userid2, "1000000000000000000", true);
 			(new OpenCEX_pseudo_token($l1ctx, "scamcoin"))->creditordebit($userid2, "1000000000000000000", true);
-		}, $ctx->get_cached_user_id());
+		}, $cachedid);
 	}
 	function batchable(){
 		return false;
