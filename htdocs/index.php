@@ -195,7 +195,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 		
 		$ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, int $userid2, OpenCEX_safety_checker $safe2, OpenCEX_uint $price2, OpenCEX_uint $amount2, OpenCEX_uint $real_amount2, $args2, int $fill_mode2, OpenCEX_L2_context $ctx2){
 			//LOCK TABLES
-			$ctx->lock_ledgers();
+			$ctx2->lock_ledgers();
 			
 			//Initialize database of balances, and debit amount from user
 			$primary = new OpenCEX_pseudo_token($l1ctx, $args2["primary"]);
@@ -208,8 +208,8 @@ $request_methods = ["non_atomic" => new class extends Request{
 			
 			
 			$l1ctx->safe_query("LOCK TABLES Orders WRITE, Misc WRITE;");
-			$ctx->ledgers_locked = false;
-			$ctx->orders_locked = true;
+			$ctx2->ledgers_locked = false;
+			$ctx2->orders_locked = true;
 			
 			
 			//Increment orders counter
