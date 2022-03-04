@@ -558,7 +558,7 @@ abstract class OpenCEX_L2_context{
 		} else{
 			$query = $this->safe_prepare("SELECT Price FROM Orders WHERE Pri = ? AND Sec = ? AND Buy = 0 ORDER BY Price ASC LIMIT 1;");
 		}
-		$query->bind_param($primary, $secondary);
+		$query->bind_param("ss", $primary, $secondary);
 		$query = $this->safe_execute_prepared($query);
 		if($query->num_rows == 0){
 			return null;
