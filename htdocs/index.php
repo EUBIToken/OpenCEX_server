@@ -481,7 +481,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 			$l1ctx->safe_query(implode(['DELETE FROM Orders WHERE Id = "', $target, '";']));
 			$remains = OpenCEX_uint::init($safe, $safe->convcheck2($res2, "InitialAmount"));
 			$remains = $remains->sub(OpenCEX_uint::init($safe, $safe->convcheck2($res2, "TotalCost")));
-			$query2 = implode([$this->ctx->safe_getenv("OpenCEX_worker"), urlencode($ctx2->safe_getenv("OpenCEX_shared_secret")), "/parallelCredit/", strval($id2), "/", urlencode($safe->convcheck2($res2, ($safe->convcheck2($res2, "Buy") == "1") ? "Pri" : "Sec")), "/", strval($remains)]);
+			$query2 = implode([$ctx2->safe_getenv("OpenCEX_worker"), urlencode($ctx2->safe_getenv("OpenCEX_shared_secret")), "/parallelCredit/", strval($id2), "/", urlencode($safe->convcheck2($res2, ($safe->convcheck2($res2, "Buy") == "1") ? "Pri" : "Sec")), "/", strval($remains)]);
 			$safe->check_safety(file_get_contents($query2) === "ok", "Balance update failed!");
 			$l1ctx->unlock_tables();
 		}, $args["target"], new OpenCEX_safety_checker($ctx), $ctx, $result, $id);
