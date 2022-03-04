@@ -201,7 +201,7 @@ final class OpenCEX_safety_checker{
 		$this->underlying->usegas($amount);
 	}
 	
-	public function convcheck2($result, $key, int $id = 0){
+	public function convcheck2($result, string $key, int $id = 0){
 		$this->usegas(1);
 		$this->check_safety($result, "SQL Query returned invalid result!");
 		$this->check_safety_2(is_null($key), "SQL Query returned invalid result!");
@@ -549,6 +549,24 @@ abstract class OpenCEX_L2_context{
 		
 		return array_reverse($candlesticks);
 	}
+	
+	public function getbidask(string $primary, string $secondary, bool $bid){
+		$this->usegas(1);
+		$query;
+		if($bid){
+			$query = $this->safe_prepare("SELECT Price FROM Orders WHERE Pri = ? AND Sec = ? AND Buy = 1 ORDER BY Price DESC LIMIT 1;");
+		} else{
+			$query = $this->safe_prepare("SELECT Price FROM Orders WHERE Pri = ? AND Sec = ? AND Buy = 0 ORDER BY Price ASC LIMIT 1;");
+		}
+		$query->bind_param($primary, $secondary);
+		$query = $this->safe_execute_prepared($query);
+		if($query->num_rows == 0){
+			return null;
+		} else{
+			$this->check_safety($query->num_rows == 1, "Orders database corrupted!");
+			return $this->convcheck2($query->fetch_assoc(), "Price");
+		}
+	}
 }
 
 //L3 context contains methods that doesn't need to access
@@ -602,7 +620,7 @@ final class OpenCEX_L3_context extends OpenCEX_L2_context {
 		}
 	}
 	
-	public function convcheck2($result, $key, int $id = 0){
+	public function convcheck2($result, string $key, int $id = 0){
 		$this->usegas(1);
 		$this->check_safety($result, "SQL Query returned invalid result!");
 		$this->check_safety_2(is_null($key), "SQL Query returned invalid result!");

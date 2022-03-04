@@ -304,30 +304,26 @@ $request_methods = ["non_atomic" => new class extends Request{
 	}
 }, "balances" => new class extends Request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
-		return $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, int $userid2, $allowed_tokens){
-			$l1ctx->safe_query("LOCK TABLE Balances WRITE");
-			$result = $l1ctx->safe_query(implode(["SELECT Coin, Balance FROM Balances WHERE UserID = ", strval($userid2), " ORDER BY Coin;"]));
-			$l1ctx->safe_query("UNLOCK TABLES;");
-			$ret = [];
-			$found_coins = [];
-			if($result->num_rows > 0){
-				$checker = $l1ctx->get_safety_checker();
-				while($row = $result->fetch_assoc()) {
-					$coin2 = $checker->convcheck2($row, "Coin");
-					array_push($found_coins, $coin2);
-					array_push($ret, [$coin2, $checker->convcheck2($row, "Balance")]);
-				}
+		$result = $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, int $userid2){
+			return $l1ctx->safe_query(implode(["SELECT Coin, Balance FROM Balances WHERE UserID = ", strval($userid2), " ORDER BY Coin;"]));
+		}, $ctx->get_cached_user_id());
+		$ret = [];
+		$found_coins = [];
+		if($result->num_rows > 0){
+			$checker = $l1ctx->get_safety_checker();
+			while($row = $result->fetch_assoc()) {
+				$coin2 = $checker->convcheck2($row, "Coin");
+				array_push($found_coins, $coin2);
+				array_push($ret, [$coin2, $checker->convcheck2($row, "Balance")]);
 			}
-			foreach($allowed_tokens as $token){
-				if(!in_array($token, $found_coins, true)){
-					array_push($ret, [$token, "0"]);
-				}
+		}
+		$allowed_tokens = $ctx->safe_decode_json($ctx->safe_getenv("OpenCEX_tokens"));
+		foreach($allowed_tokens as $token){
+			if(!in_array($token, $found_coins, true)){
+				array_push($ret, [$token, "0"]);
 			}
-			return $ret;
-		}, $ctx->get_cached_user_id(), $ctx->safe_decode_json($ctx->safe_getenv("OpenCEX_tokens")));
-	}
-	function batchable(){
-		return false;
+		}
+		return $ret;
 	}
 }, "get_chart" => new class extends Request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
@@ -336,9 +332,6 @@ $request_methods = ["non_atomic" => new class extends Request{
 		$ctx->check_safety(array_key_exists("primary", $args), "Chart loading must specify primary token!");
 		$ctx->check_safety(array_key_exists("secondary", $args), "Chart loading must specify secondary token!");
 		return $ctx->loadcharts($args['primary'], $args['secondary']);
-	}
-	function batchable(){
-		return false;
 	}
 }, "eth_deposit_address" => new class extends Request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
@@ -501,6 +494,16 @@ $request_methods = ["non_atomic" => new class extends Request{
 	}
 	function batchable(){
 		return false;
+	}
+}, "bid_ask" => new class extends Request{
+	public function execute(OpenCEX_L3_context $ctx, $args){
+		$ctx->check_safety(count($args) == 2, "Bid-ask quoting requires 2 arguments!");
+		check_safety_3($ctx, $args);
+		$primary = $args["primary"];
+		$secondary = $args["secondary"];
+		$ctx->check_safety(in_array(implode("_", [$primary, $secondary]), $ctx->safe_decode_json($ctx->safe_getenv("OpenCEX_whitelisted_pairs")), true), "Invalid trading pair!");
+		return [$ctx->getbidask($primary, $secondary, true), $ctx->getbidask($primary, $secondary, false)];
+		
 	}
 }];
 
