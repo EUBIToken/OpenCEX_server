@@ -308,11 +308,10 @@ $request_methods = ["non_atomic" => new class extends Request{
 		$ret = [];
 		$found_coins = [];
 		if($result->num_rows > 0){
-			$checker = $l1ctx->get_safety_checker();
 			while($row = $result->fetch_assoc()) {
-				$coin2 = $checker->convcheck2($row, "Coin");
+				$coin2 = $ctx->convcheck2($row, "Coin");
 				array_push($found_coins, $coin2);
-				array_push($ret, [$coin2, $checker->convcheck2($row, "Balance")]);
+				array_push($ret, [$coin2, $ctx->convcheck2($row, "Balance")]);
 			}
 		}
 		$allowed_tokens = $ctx->safe_decode_json($ctx->safe_getenv("OpenCEX_tokens"));
