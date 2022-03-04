@@ -159,6 +159,36 @@ final class OpenCEX_L1_context{
 			$this->container->die2("MySQL connection still open after L1 context destruction!");
 		}
 	}
+	
+	public function unlock_tables(bool $fake = false){
+		$this->container->usegas(1);
+		if($fake){
+			$this->container->ledgers_locked = false;
+			$this->container->orders_locked = false;
+		} else{
+			$this->container->unlock_tables();
+		}
+	}
+	public function lock_ledgers(){
+		$this->container->usegas(1);
+		$this->container->lock_ledgers();
+	}
+	public function lock_orders(){
+		$this->container->usegas(1);
+		$this->container->lock_orders();
+	}
+	public function lock_both(){
+		$this->container->usegas(1);
+		$this->container->lock_both();
+	}
+	public function ledgers_locked(){
+		$this->container->usegas(1);
+		return $this->container->ledgers_locked;
+	}
+	public function orders_locked(){
+		$this->container->usegas(1);
+		return $this->container->orders_locked;
+	}
 }
 
 //Since many methods asks for a reference to the L2 context just to
@@ -527,7 +557,10 @@ abstract class OpenCEX_L2_context{
 	}
 	
 	public function unlock_tables(){
-		$this->safe_query("UNLOCK TABLES;"); //Alias
+		$this->safe_query("UNLOCK TABLES;");
+		$this->orders_locked = false;
+		$this->ledgers_locked = false;
+		$this->lock_ovrd = false;
 	}
 	
 	public function loadcharts(string $primary, string $secondary){
@@ -566,6 +599,44 @@ abstract class OpenCEX_L2_context{
 			$this->check_safety($query->num_rows == 1, "Orders database corrupted!");
 			return $this->convcheck2($query->fetch_assoc(), "Price");
 		}
+	}
+	
+	public function fetchBalancesStream(int $userid){
+		return $this->safe_query(implode(["SELECT Coin, Balance FROM Balances WHERE UserID = ", strval($userid), " ORDER BY Coin;"]));
+	}
+	
+	
+	//This section deals with locking problems
+	public bool $ledgers_locked = false;
+	public bool $orders_locked = false;
+	public bool $lock_ovrd = false;
+	
+	public function lock_ledgers(){
+		$this->usegas(1);
+		$this->safe_query("LOCK TABLES Balances WRITE;");
+		$this->ledgers_locked = true;
+		$this->orders_locked = false;
+		$this->lock_ovrd = false;
+	}
+	
+	public function lock_orders(){
+		$this->usegas(1);
+		$this->safe_query("LOCK TABLES Orders WRITE;");
+		$this->ledgers_locked = false;
+		$this->orders_locked = true;
+		$this->lock_ovrd = false;
+	}
+	
+	public function lock_both(){
+		$this->usegas(1);
+		$this->safe_query("LOCK TABLES Orders WRITE, Balances WRITE;");
+		$this->ledgers_locked = true;
+		$this->orders_locked = true;
+		$this->lock_ovrd = false;
+	}
+	
+	public function anything_locked(){
+		return $this->ledgers_locked || $this->orders_locked || $this->lock_ovrd;
 	}
 }
 

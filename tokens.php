@@ -16,8 +16,8 @@ abstract class OpenCEX_token{
 		$this->safety_checker->usegas(1);
 		$this->ctx = $ctx;
 		$this->name = $name;
-		if($GLOBALS["OpenCEX_ledger_unlk"]){
-			$ctx->safe_query("LOCK TABLES Balances WRITE;");
+		if(!$ctx->ledgers_locked()){
+			$ctx->lock_ledgers();
 		}
 		$this->prepared_query = $this->ctx->safe_prepare("SELECT Balance FROM Balances WHERE Coin = ? AND UserID = ?;");
 		$this->prepared_update = $this->ctx->safe_prepare("UPDATE Balances SET Balance = ? WHERE Coin = ? AND UserID = ?;");

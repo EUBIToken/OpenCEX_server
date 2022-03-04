@@ -147,6 +147,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 	}
 }, "get_test_tokens" => new class extends Request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
+		$ctx->lock_ledgers();
 		$ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, int $userid2){
 			//NOTE: We use nested transactions to ensure that the lock is properly released!
 			(new OpenCEX_pseudo_token($l1ctx, "shitcoin"))->creditordebit($userid2, "1000000000000000000", true);
@@ -192,11 +193,9 @@ $request_methods = ["non_atomic" => new class extends Request{
 			$real_amount->sub(OpenCEX_uint::init($safe, $ctx->safe_decode_json($ctx->safe_getenv("OpenCEX_minimum_limit"))[$chk_token]), "Order size is smaller than the minimum limit order size!");
 		}
 		
-		$ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, int $userid2, OpenCEX_safety_checker $safe2, OpenCEX_uint $price2, OpenCEX_uint $amount2, OpenCEX_uint $real_amount2, $args2, int $fill_mode2){
+		$ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, int $userid2, OpenCEX_safety_checker $safe2, OpenCEX_uint $price2, OpenCEX_uint $amount2, OpenCEX_uint $real_amount2, $args2, int $fill_mode2, OpenCEX_L2_context $ctx2){
 			//LOCK TABLES
-			$GLOBALS['OpenCEX_anything_locked'] = true;
-			$GLOBALS['OpenCEX_ledger_unlk'] = false;
-			$l1ctx->safe_query("LOCK TABLES Balances WRITE;");
+			$ctx->lock_ledgers();
 			
 			//Initialize database of balances, and debit amount from user
 			$primary = new OpenCEX_pseudo_token($l1ctx, $args2["primary"]);
@@ -207,9 +206,11 @@ $request_methods = ["non_atomic" => new class extends Request{
 				$secondary->creditordebit($userid2, $amount2, false, true);
 			}
 			
-			$GLOBALS['OpenCEX_ledger_unlk'] = true;
-			$GLOBALS['OpenCEX_orders_table_unlk'] = false;
+			
 			$l1ctx->safe_query("LOCK TABLES Orders WRITE, Misc WRITE;");
+			$ctx->ledgers_locked = false;
+			$ctx->orders_locked = true;
+			
 			
 			//Increment orders counter
 			$result = $l1ctx->safe_query("SELECT Val FROM Misc WHERE Kei = 'OrderCounter';");
@@ -237,8 +238,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 				$primary = $args2["primary"];
 				$secondary = $args2["secondary"];
 				$l1ctx->safe_query("LOCK TABLES HistoricalPrices WRITE;");
-				$GLOBALS["OpenCEX_orders_table_unlk"] = true;
-				$GLOBALS["OpenCEX_ledger_unlk"] = true;
+				$l1ctx->unlock_tables(true); //Override locking protection
 				$prepared = $l1ctx->safe_prepare("SELECT Timestamp, Open, High, Low, Close FROM HistoricalPrices WHERE Pri = ? AND Sec = ? ORDER BY Timestamp DESC LIMIT 1;");
 				$prepared->bind_param('ss', $primary, $secondary);
 				$result = $l1ctx->safe_execute_prepared($prepared);
@@ -297,16 +297,14 @@ $request_methods = ["non_atomic" => new class extends Request{
 				$prepared->bind_param("sssssss", $open2, $high2, $low2, $close2, $time2, $primary, $secondary);
 				$l1ctx->safe_execute_prepared($prepared);
 			}
-		}, $ctx->get_cached_user_id(), $safe, $price, $amount, $real_amount, $args, $fill_mode);
+		}, $ctx->get_cached_user_id(), $safe, $price, $amount, $real_amount, $args, $fill_mode, $ctx);
 	}
 	function batchable(){
 		return false;
 	}
 }, "balances" => new class extends Request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
-		$result = $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, int $userid2){
-			return $l1ctx->safe_query(implode(["SELECT Coin, Balance FROM Balances WHERE UserID = ", strval($userid2), " ORDER BY Coin;"]));
-		}, $ctx->get_cached_user_id());
+		$result = $ctx->fetchBalancesStream($ctx->get_cached_user_id());
 		$ret = [];
 		$found_coins = [];
 		if($result->num_rows > 0){
@@ -363,13 +361,14 @@ $request_methods = ["non_atomic" => new class extends Request{
 				$ctx->die2("Unsupported token!");
 				break;
 		}
+		
 		$wallet = new OpenCEX_SmartWalletManager($safe, $blockchain);
-		$token = $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, OpenCEX_SmartWalletManager $wallet2, string $name2){
+		$token = $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, OpenCEX_SmartWalletManager $wallet2, string $name2, OpenCEX_L2_context $ctx2){
+			$l1ctx->safe_query("LOCK TABLES Balances WRITE, Nonces WRITE;");
+			$ctx2->ledgers_locked = true; //Override normal locking
+			$ctx2 = null;
 			$MATIC = new OpenCEX_pseudo_token($l1ctx, "MATIC");
 			$MintME = new OpenCEX_pseudo_token($l1ctx, "MintME");
-			$l1ctx->safe_query("LOCK TABLES Balances WRITE, Nonces WRITE;");
-			$GLOBALS["OpenCEX_ledger_unlk"] = false;
-			$GLOBALS["OpenCEX_anything_locked"] = true;
 			
 			switch($name2){
 				case "PolyEUBI":
@@ -378,7 +377,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 					return new OpenCEX_native_token($l1ctx, $name2, $wallet2);
 			}
 			
-		}, $wallet, $args["token"]);
+		}, $wallet, $args["token"], $ctx);
 		
 		
 		//We add some gas, so we don't fail due to insufficent gas.
@@ -413,21 +412,21 @@ $request_methods = ["non_atomic" => new class extends Request{
 		}
 		$wallet;
 		$wallet = new OpenCEX_SmartWalletManager($safe, $blockchain, $ctx->cached_eth_deposit_key());
-		$GLOBALS["OpenCEX_ledger_unlk"] = false;
-		$token = $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, OpenCEX_SmartWalletManager $manager, string $token2){
+		$token = $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, OpenCEX_SmartWalletManager $manager, string $token2, OpenCEX_L2_context $ctx2){
+			$ctx2->ledgers_locked = true; //Override locking
 			switch($token2){
 				case "PolyEUBI":
-					$GLOBALS["OpenCEX_anything_locked"] = true;
 					$l1ctx->safe_query("LOCK TABLES Balances WRITE, Nonces WRITE;");
 					return new OpenCEX_erc20_token($l1ctx, $token2, $manager, "0x553E77F7f71616382B1545d4457e2c1ee255FA7A", new OpenCEX_pseudo_token($l1ctx, "MATIC"));
 				default:
 					$ret2 = new OpenCEX_native_token($l1ctx, $token2, $manager);
-					$GLOBALS["OpenCEX_ledger_unlk"] = true;
+					
+					$l1ctx->unlock_tables(true); //Override
 					$l1ctx->safe_query("LOCK TABLES Nonces WRITE;");
 					return $ret2;
 			}
 			
-		}, $wallet, $args["token"]);
+		}, $wallet, $args["token"], $ctx);
 		//We add some gas, so we don't fail due to insufficent gas.
 		$ctx->usegas(-1000);
 		$GLOBALS["OpenCEX_tempgas"] = true;
@@ -470,11 +469,10 @@ $request_methods = ["non_atomic" => new class extends Request{
 		$ctx->check_safety(is_numeric($args["target"]), "Target must be numeric!");
 		$result = $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, string $target){
 			$l1ctx->safe_query("LOCK TABLE Orders WRITE, Sessions READ, Accounts READ;");
-			$GLOBALS["OpenCEX_anything_locked"] = true;
-			$GLOBALS["OpenCEX_orders_table_unlk"] = false;
 			$res2 = $l1ctx->safe_query(implode(['SELECT PlacedBy, Pri, Sec, InitialAmount, TotalCost, Buy FROM Orders WHERE Id = "', $target, '";']));
 			return $res2;
 		}, $args["target"]);
+		$ctx->orders_locked = true; //Override locking
 		$ctx->check_safety_2($result->num_rows == 0, "Non-existant order!");
 		$ctx->check_safety($result->num_rows == 1, "Corrupted orders database!");
 		$result = $result->fetch_assoc();
@@ -486,8 +484,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 			$remains = $remains->sub(OpenCEX_uint::init($safe, $safe->convcheck2($res2, "TotalCost")));
 			$query2 = implode([$this->ctx->safe_getenv("OpenCEX_worker"), urlencode($ctx2->safe_getenv("OpenCEX_shared_secret")), "/parallelCredit/", strval($id2), "/", urlencode($safe->convcheck2($res2, ($safe->convcheck2($res2, "Buy") == "1") ? "Pri" : "Sec")), "/", strval($remains)]);
 			$safe->check_safety(file_get_contents($query2) === "ok", "Balance update failed!");
-			$GLOBALS["OpenCEX_orders_table_unlk"] = true;
-			$l1ctx->safe_query("UNLOCK TABLES;");
+			$l1ctx->unlock_tables();
 		}, $args["target"], new OpenCEX_safety_checker($ctx), $ctx, $result, $id);
 		
 		
@@ -589,18 +586,12 @@ try{
 		array_push($return_array, $request_methods[$singular_request["method"]]->execute($ctx, $data));
 		
 		
-		if($OpenCEX_anything_locked){
-			$ctx->unlock_tables();
-			$OpenCEX_anything_locked = false;
-			$GLOBALS["OpenCEX_ledger_unlk"] = true;
-			$GLOBALS["OpenCEX_orders_table_unlk"] = true;
-		}
-		
-		
 		//In an atomic batch, if 1 request fails, all previous requests are reverted.
 		//In a standard batch, if 1 request fails, the results of previous requests are preserved.
 		//We need to flush outstanding changes in a standard batch after each request.
-		if($non_atomic){
+		if($ctx->anything_locked()){
+			$ctx->unlock_tables();
+		} else if($non_atomic){
 			$ctx->flush_outstanding();
 		}
 		

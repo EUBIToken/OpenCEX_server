@@ -236,9 +236,7 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 		$this->gastoken->creditordebit($from, $chainquotes[1]->mul($chainquotes[2]), false, true);
 		$this->safety_checker->check_safety(array_key_exists($this->manager->chainid, OpenCEX_chainids), "Invalid chainid!");
 		$signed = $this->manager->signTransactionIMPL(new OpenCEX_Ethereum_Transaction($chainquotes[0]->tohex(), $chainquotes[1]->tohex(), $chainquotes[2]->tohex(), $this->singleton, "", $transaction["data"]));
-		$this->ctx->safe_query("UNLOCK TABLES;");
-		$GLOBALS["OpenCEX_anything_locked"] = false;
-		$GLOBALS["OpenCEX_ledger_unlk"] = true;
+		$this->ctx->unlock_tables();
 		
 		file_get_contents(implode([$this->requestPrefix, OpenCEX_chainids[$this->manager->chainid], "/", urlencode($signed), "/", strval($from), "/", $this->name, "/", strval($balance2)]));
 	}
