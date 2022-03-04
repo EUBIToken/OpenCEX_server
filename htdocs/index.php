@@ -499,6 +499,9 @@ $request_methods = ["non_atomic" => new class extends Request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		$ctx->check_safety(count($args) == 2, "Bid-ask quoting requires 2 arguments!");
 		check_safety_3($ctx, $args);
+		$ctx->check_safety(array_key_exists("primary", $args), "Bid-ask quoting requires primary token!");
+		$ctx->check_safety(array_key_exists("secondary", $args), "Bid-ask quoting requires secondary token!");
+		
 		$primary = $args["primary"];
 		$secondary = $args["secondary"];
 		$ctx->check_safety(in_array(implode("_", [$primary, $secondary]), $ctx->safe_decode_json($ctx->safe_getenv("OpenCEX_whitelisted_pairs")), true), "Invalid trading pair!");
