@@ -24,9 +24,16 @@ function OpenCEX_error_handler($errno, string $message, string $file, int $line,
 set_error_handler("OpenCEX_error_handler");
 
 //Safety checking
-$OpenCEX_permitted_domain = getenv("OpenCEX_permitted_domain");
+$OpenCEX_temp_check = getenv("OpenCEX_permitted_domain");
 
-if(is_string($OpenCEX_permitted_domain) && $_SERVER['HTTP_HOST'] !== $OpenCEX_permitted_domain){
+if(is_string($OpenCEX_temp_check) && $_SERVER['HTTP_HOST'] !== $OpenCEX_temp_check){
+	//NOTE: This safety check prevents cloudflare-stripping attacks by
+	//accessing the herokuapp domain directly!
+	die('{"status": "error", "reason": "Unsupported domain!"}');
+}
+$OpenCEX_temp_check = getenv("OpenCEX_permitted_origin");
+
+if(is_string($OpenCEX_temp_check) && $_SERVER['HTTP_ORIGIN'] !== $OpenCEX_temp_check){
 	//NOTE: This safety check prevents cloudflare-stripping attacks by
 	//accessing the herokuapp domain directly!
 	die('{"status": "error", "reason": "Unsupported origin!"}');
@@ -39,22 +46,22 @@ if(strlen($_POST["OpenCEX_request_body"]) > 65536){
 	die('{"status": "error", "reason": "Excessively long request body!"}');
 }
 
-$decoded_request = json_decode($_POST["OpenCEX_request_body"], true);
+$OpenCEX_temp_check = json_decode($_POST["OpenCEX_request_body"], true);
 
-if(is_null($decoded_request)){
+if(is_null($OpenCEX_temp_check)){
 	die('{"status": "error", "reason": "Invalid request!"}');
 }
 
 $requests_count = 1;
-if(is_array($decoded_request)){
+if(is_array($OpenCEX_temp_check)){
 	//shortcut
-	$requests_count = count($decoded_request);
+	$requests_count = count($OpenCEX_temp_check);
 	if($requests_count == 0){
 		die('{"status": "success", "returns": []}');
 	}
 } else{
 	//put request in array, if it's not an array
-	$decoded_request = [$decoded_request];
+	$OpenCEX_temp_check = [$OpenCEX_temp_check];
 }
 
 $OpenCEX_common_impl = "common.php";
@@ -506,7 +513,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 $not_multiple_requests = $requests_count < 2;
 $captcha_caught = false;
 $non_atomic = false;
-foreach($decoded_request as $singular_request){
+foreach($OpenCEX_temp_check as $singular_request){
 	if(!array_key_exists("method", $singular_request)){
 		die('{"status": "error", "reason": "Request method missing!"}');
 	}
@@ -552,7 +559,7 @@ try{
 	}
 	
 	//Execute requests
-	foreach($decoded_request as $singular_request){
+	foreach($OpenCEX_temp_check as $singular_request){
 		$ctx->usegas(1);
 		$data = null;
 		if(array_key_exists("data", $singular_request)){
