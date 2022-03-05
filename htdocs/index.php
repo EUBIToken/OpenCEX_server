@@ -112,7 +112,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 }, "create_account" => new class extends Request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		//Safety checks
-		$ctx->check_safety($ctx->safe_getenv("OpenCEX_devserver") == "true", "Account creation not allowed on dev server!");
+		$ctx->check_safety_2($ctx->safe_getenv("OpenCEX_devserver") == "true", "Account creation not allowed on dev server!");
 		check_safety_3($ctx, $args);
 		$ctx->check_safety(count($args) === 3, "Account creation requires 3 arguments!");
 		$ctx->check_safety(array_key_exists("username", $args), "Account creation error: missing username!");
