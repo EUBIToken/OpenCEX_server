@@ -26,14 +26,22 @@ set_error_handler("OpenCEX_error_handler");
 //Safety checking
 $OpenCEX_temp_check = getenv("OpenCEX_permitted_domain");
 
-if(is_string($OpenCEX_temp_check) && $_SERVER['HTTP_HOST'] !== $OpenCEX_temp_check){
+if(!array_key_exists("HTTP_HOST", $_SERVER)){
+	die('{"status": "error", "reason": "Missing HTTP Host information!"}');
+}
+
+if(!array_key_exists("HTTP_ORIGIN", $_SERVER)){
+	die('{"status": "error", "reason": "Missing HTTP Origin information!"}');
+}
+
+if($_SERVER['HTTP_HOST'] !== $OpenCEX_temp_check){
 	//NOTE: This safety check prevents cloudflare-stripping attacks by
 	//accessing the herokuapp domain directly!
 	die('{"status": "error", "reason": "Unsupported domain!"}');
 }
 $OpenCEX_temp_check = getenv("OpenCEX_permitted_origin");
 
-if(is_string($OpenCEX_temp_check) && $_SERVER['HTTP_ORIGIN'] !== $OpenCEX_temp_check){
+if($_SERVER['HTTP_ORIGIN'] !== $OpenCEX_temp_check){
 	//NOTE: This safety check prevents cloudflare-stripping attacks by
 	//accessing the herokuapp domain directly!
 	die('{"status": "error", "reason": "Unsupported origin!"}');
