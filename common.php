@@ -73,7 +73,7 @@ final class OpenCEX_L1_context{
 			} catch(Exception $e){
 				if(strtolower($e->getMessage()) == $nodb){
 					//Refund gas for database setup
-					$container->usegas(-500);
+					$container->usegas(-700);
 					$this->safe_query($db_name_select ? "CREATE DATABASE OpenCEX_test;" : "CREATE DATABASE OpenCEX;");
 					$temp_sql->select_db($db_name);
 					$this->safe_query("CREATE TABLE Accounts (UserID BIGINT NOT NULL AUTO_INCREMENT UNIQUE, Username VARCHAR(255) NOT NULL UNIQUE, Passhash VARCHAR(255) NOT NULL, DepositPrivateKey VARCHAR(64) UNIQUE NOT NULL, PRIMARY KEY (UserID));");
@@ -81,6 +81,8 @@ final class OpenCEX_L1_context{
 					$this->safe_query("CREATE TABLE Balances (UserID BIGINT NOT NULL, Coin VARCHAR(255) NOT NULL, Balance VARCHAR(255) NOT NULL DEFAULT('0'));");
 					$this->safe_query("CREATE TABLE Orders (Pri VARCHAR(255) NOT NULL, Sec VARCHAR(255) NOT NULL, Price VARCHAR(255) NOT NULL, Amount VARCHAR(255) NOT NULL, InitialAmount VARCHAR(255) NOT NULL DEFAULT '0', TotalCost VARCHAR(255) NOT NULL, Id BIGINT NOT NULL UNIQUE, PlacedBy BIGINT NOT NULL, Buy BIT NOT NULL);");
 					$this->safe_query("CREATE TABLE Misc (Kei VARCHAR(255) NOT NULL UNIQUE, Val VARCHAR(255) NOT NULL);");
+					$this->safe_query("CREATE TABLE Nonces (Blockchain BIGINT NOT NULL, Address VARCHAR(64) NOT NULL, ExpectedValue BIGINT NOT NULL);");
+					$this->safe_query("CREATE TABLE WorkerTasks (Id BIGINT PRIMARY KEY AUTO_INCREMENT NOT NULL, URL VARCHAR(255) NOT NULL, URL2 VARCHAR(255) NOT NULL, LastTouched BIGINT, Status TINYINT NOT NULL);");
 				} else{
 					throw $e;
 				}
