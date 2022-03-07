@@ -194,7 +194,7 @@ final class OpenCEX_erc20_token extends OpenCEX_token{
 		$this->manager = $manager;
 		$this->token_address = $token_address;
 		$this->gastoken = $gastoken;
-		$this->singleton = ($this->manager->chainid == 137) ? "0xed91faa6efa532b40f6a1bff3cab29260ebabd21" : "0x98ecc85b24e0041c208c21aafba907cd74f9ded6";
+		$this->singleton = ($this->manager->chainid == 137) ? "0xed91faa6efa532b40f6a1bff3cab29260ebabd21" : "0x9f46db28f5d7ef3c5b8f03f19eea5b7aa8621349";
 		$this->requestPrefix = implode([$this->safety_checker->safe_getenv("OpenCEX_worker"), "/", urlencode(strval($this->safety_checker->safe_getenv("OpenCEX_shared_secret"))), "/sendAndCreditWhenSecure/"]);
 	}
 	public function send(int $from, string $address, OpenCEX_uint $amount, bool $sync = true){

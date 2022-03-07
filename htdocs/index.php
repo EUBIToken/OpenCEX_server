@@ -82,7 +82,7 @@ require_once("../tokens.php");
 require_once("../wallet_manager.php");
 require_once("../blockchain_manager.php");
 
-abstract class Request{
+abstract class OpenCEX_request{
 	public abstract function execute(OpenCEX_L3_context $ctx, $args);
 	public function captcha_required(){
 		return false;
@@ -104,12 +104,68 @@ function check_safety_3($ctx, $args, $exception = NULL){
 	}
 }
 
-$request_methods = ["non_atomic" => new class extends Request{
+abstract class OpenCEX_depositorwithdraw extends OpenCEX_request{
+	protected function get_token(OpenCEX_L1_context $l1ctx, OpenCEX_SmartWalletManager $manager, string $token2, OpenCEX_L2_context $ctx2){
+		$ctx2->usegas(1);
+		$ctx2->ledgers_locked = true; //Override locking
+		$token_address;
+		switch($token2){
+			case "PolyEUBI":
+				$token_address = "0x553E77F7f71616382B1545d4457e2c1ee255FA7A";
+				break;
+			case "EUBI":
+				$token_address = "0x8afa1b7a8534d519cb04f4075d3189df8a6738c1";
+				break;
+			case "1000x":
+				$token_address = "0x7b535379bbafd9cd12b35d91addabf617df902b2";
+				break;
+			default:
+				$token_address = null;
+				break;
+		}
+		switch($token2){
+			case "PolyEUBI":
+				$l1ctx->safe_query("LOCK TABLES Balances WRITE, Nonces WRITE;");
+				return new OpenCEX_erc20_token($l1ctx, $token2, $manager, $token_address, new OpenCEX_pseudo_token($l1ctx, "MATIC"));
+			case "EUBI":
+			case "1000x":
+				$l1ctx->safe_query("LOCK TABLES Balances WRITE, Nonces WRITE;");
+				return new OpenCEX_erc20_token($l1ctx, $token2, $manager, $token_address, new OpenCEX_pseudo_token($l1ctx, "MintME"));
+			default:
+				$ret2 = new OpenCEX_native_token($l1ctx, $token2, $manager);
+				
+				$l1ctx->unlock_tables(true); //Override
+				$l1ctx->safe_query("LOCK TABLES Nonces WRITE;");
+				return $ret2;
+		}
+		
+	}
+	
+	protected function resolve_blockchain(string $token, OpenCEX_safety_checker $safe){
+		$safe->usegas(1);
+		switch($token){
+			case "PolyEUBI":
+			case "MATIC":
+				return new OpenCEX_BlockchainManager($safe, 137, "https://polygon-rpc.com");
+			case "MintME":
+			case "EUBI":
+			case "1000x":
+				return new OpenCEX_BlockchainManager($safe, 24734, "https://node1.mintme.com:443");
+			case "BNB":
+				return new OpenCEX_BlockchainManager($safe, 56, "https://bsc-dataseed.binance.org/");
+			default:
+				$safe->die2("Unsupported token!");
+				return;
+		}
+	}
+}
+
+$request_methods = ["non_atomic" => new class extends OpenCEX_request{
 	//This special request indicates that we are doing a non-atomic request.
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		
 	}
-}, "create_account" => new class extends Request{
+}, "create_account" => new class extends OpenCEX_request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		//Safety checks
 		$ctx->check_safety_2($ctx->safe_getenv("OpenCEX_devserver") == "true", "Account creation not allowed on dev server!");
@@ -132,7 +188,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 	public function captcha_required(){
 		return true;
 	}
-}, "login" => new class extends Request{
+}, "login" => new class extends OpenCEX_request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		//Safety checks
 		check_safety_3($ctx, $args, "renember");
@@ -145,19 +201,19 @@ $request_methods = ["non_atomic" => new class extends Request{
 	public function captcha_required(){
 		return true;
 	}
-}, "flush" => new class extends Request{
+}, "flush" => new class extends OpenCEX_request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		$ctx->flush_outstanding();
 	}
-}, "client_name" => new class extends Request{
+}, "client_name" => new class extends OpenCEX_request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		return $ctx->get_cached_username();
 	}
-}, "logout" => new class extends Request{
+}, "logout" => new class extends OpenCEX_request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		return $ctx->destroy_active_session();
 	}
-}, "get_test_tokens" => new class extends Request{
+}, "get_test_tokens" => new class extends OpenCEX_request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		$cachedid = $ctx->get_cached_user_id();
 		$ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, int $userid2){
@@ -169,7 +225,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 	function batchable(){
 		return false;
 	}
-}, "place_order" => new class extends Request{
+}, "place_order" => new class extends depositorwithdraw{
 	//TODO: Require captcha for order creation in production
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		//Safety checks
@@ -314,7 +370,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 	function batchable(){
 		return false;
 	}
-}, "balances" => new class extends Request{
+}, "balances" => new class extends OpenCEX_request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		$result = $ctx->fetchBalancesStream($ctx->get_cached_user_id());
 		$ret = [];
@@ -334,7 +390,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 		}
 		return $ret;
 	}
-}, "get_chart" => new class extends Request{
+}, "get_chart" => new class extends OpenCEX_request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		$ctx->check_safety(count($args) == 2, "Chart loading requires 2 arguments!");
 		check_safety_3($ctx, $args, null);
@@ -342,102 +398,40 @@ $request_methods = ["non_atomic" => new class extends Request{
 		$ctx->check_safety(array_key_exists("secondary", $args), "Chart loading must specify secondary token!");
 		return $ctx->loadcharts($args['primary'], $args['secondary']);
 	}
-}, "eth_deposit_address" => new class extends Request{
+}, "eth_deposit_address" => new class extends OpenCEX_request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		$safe = new OpenCEX_safety_checker($ctx);
 		return (new OpenCEX_WalletManager($safe, new OpenCEX_BlockchainManagerWrapper($safe, new OpenCEX_FullBlockchainManager()), $ctx->cached_eth_deposit_key()))->address;
 	}
-}, "withdraw" => new class extends Request{
+}, "withdraw" => new class extends OpenCEX_depositorwithdraw{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		$ctx->check_safety(count($args) == 3, "Withdrawal requires 3 arguments!");
 		check_safety_3($ctx, $args, null);
 		$ctx->check_safety(array_key_exists("token", $args), "Withdrawal must specify token!");
 		$ctx->check_safety(array_key_exists("amount", $args), "Withdrawal must specify amount!");
 		$ctx->check_safety(array_key_exists("address", $args), "Withdrawal must specify recipient address!");
-		$userid = $ctx->get_cached_user_id();
 		
 		$safe = new OpenCEX_safety_checker($ctx);
-		switch($args["token"]){
-			case "PolyEUBI":
-			case "MATIC":
-				$blockchain = new OpenCEX_BlockchainManager($safe, 137, "https://polygon-rpc.com");
-				break;
-			case "MintME":
-				$blockchain = new OpenCEX_BlockchainManager($safe, 24734, "https://node1.mintme.com:443");
-				break;
-			case "BNB":
-				$blockchain = new OpenCEX_BlockchainManager($safe, 56, "https://bsc-dataseed.binance.org/");
-				break;
-			default:
-				$ctx->die2("Unsupported token!");
-				break;
-		}
-		
-		$wallet = new OpenCEX_SmartWalletManager($safe, $blockchain);
-		$token = $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, OpenCEX_SmartWalletManager $wallet2, string $name2, OpenCEX_L2_context $ctx2){
-			$l1ctx->safe_query("LOCK TABLES Balances WRITE, Nonces WRITE;");
-			$ctx2->ledgers_locked = true; //Override normal locking
-			$ctx2 = null;
-			$MATIC = new OpenCEX_pseudo_token($l1ctx, "MATIC");
-			$MintME = new OpenCEX_pseudo_token($l1ctx, "MintME");
-			
-			switch($name2){
-				case "PolyEUBI":
-					return new OpenCEX_erc20_token($l1ctx, $name2, $wallet2, "0x553e77f7f71616382b1545d4457e2c1ee255fa7a", $MATIC);
-				default:
-					return new OpenCEX_native_token($l1ctx, $name2, $wallet2);
-			}
-			
-		}, $wallet, $args["token"], $ctx);
+		$wallet = new OpenCEX_SmartWalletManager($safe, $this->resolve_blockchain($args["token"], $safe));
+		$token = $ctx->borrow_sql($this->get_token, $wallet, $args["token"], $ctx);
 		
 		
 		//We add some gas, so we don't fail due to insufficent gas.
 		$ctx->usegas(-1000);
 		$GLOBALS["OpenCEX_tempgas"] = true;
-		$token->send($userid, $args["address"], OpenCEX_uint::init($safe, $args["amount"]));
+		$token->send($ctx->get_cached_user_id(), $args["address"], OpenCEX_uint::init($safe, $args["amount"]));
 	}
 	function batchable(){
 		return false;
 	}
-}, "deposit" => new class extends Request{
+}, "deposit" => new class extends OpenCEX_depositorwithdraw{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		$ctx->check_safety(count($args) == 1, "Deposit must specify one argument!");
 		$ctx->check_safety(array_key_exists("token", $args), "Deposit must specify token!");
 		$ctx->check_safety(is_string($args["token"]), "Token must be string!");
 		$safe = new OpenCEX_safety_checker($ctx);
-		$blockchain;
-		switch($args["token"]){
-			case "MATIC":
-			case "PolyEUBI":
-				$blockchain = new OpenCEX_BlockchainManager($safe, 137, "https://polygon-rpc.com");
-				break;
-			case "MintME":
-				$blockchain = new OpenCEX_BlockchainManager($safe, 24734, "https://node1.mintme.com:443");
-				break;
-			case "BNB":
-				$blockchain = new OpenCEX_BlockchainManager($safe, 56, "https://bsc-dataseed.binance.org/");
-				break;
-			default:
-				$ctx->die2("Unsupported token!");
-				break;
-		}
-		$wallet;
-		$wallet = new OpenCEX_SmartWalletManager($safe, $blockchain, $ctx->cached_eth_deposit_key());
-		$token = $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, OpenCEX_SmartWalletManager $manager, string $token2, OpenCEX_L2_context $ctx2){
-			$ctx2->ledgers_locked = true; //Override locking
-			switch($token2){
-				case "PolyEUBI":
-					$l1ctx->safe_query("LOCK TABLES Balances WRITE, Nonces WRITE;");
-					return new OpenCEX_erc20_token($l1ctx, $token2, $manager, "0x553E77F7f71616382B1545d4457e2c1ee255FA7A", new OpenCEX_pseudo_token($l1ctx, "MATIC"));
-				default:
-					$ret2 = new OpenCEX_native_token($l1ctx, $token2, $manager);
-					
-					$l1ctx->unlock_tables(true); //Override
-					$l1ctx->safe_query("LOCK TABLES Nonces WRITE;");
-					return $ret2;
-			}
-			
-		}, $wallet, $args["token"], $ctx);
+		$wallet = new OpenCEX_SmartWalletManager($safe, $this->resolve_blockchain($args["token"], $safe), $ctx->cached_eth_deposit_key());
+		$token = $ctx->borrow_sql($this->get_token, $wallet, $args["token"], $ctx);
 		//We add some gas, so we don't fail due to insufficent gas.
 		$ctx->usegas(-1000);
 		$GLOBALS["OpenCEX_tempgas"] = true;
@@ -446,7 +440,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 	function batchable(){
 		return false;
 	}
-}, "load_active_orders" => new class extends Request{
+}, "load_active_orders" => new class extends OpenCEX_request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		return $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, int $userid2){
 			$l1ctx->safe_query("LOCK TABLE Orders READ;");
@@ -472,7 +466,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 	function batchable(){
 		return false;
 	}
-}, "cancel_order" => new class extends Request{
+}, "cancel_order" => new class extends OpenCEX_request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		$ctx->check_safety(count($args) == 1, "Order cancellation must specify one argument!");
 		$ctx->check_safety(array_key_exists("target", $args), "Order cancellation must specify target!");
@@ -503,7 +497,7 @@ $request_methods = ["non_atomic" => new class extends Request{
 	function batchable(){
 		return false;
 	}
-}, "bid_ask" => new class extends Request{
+}, "bid_ask" => new class extends OpenCEX_request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		$ctx->check_safety(count($args) == 2, "Bid-ask quoting requires 2 arguments!");
 		check_safety_3($ctx, $args);
