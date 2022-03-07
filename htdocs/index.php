@@ -105,11 +105,11 @@ function check_safety_3($ctx, $args, $exception = NULL){
 }
 
 abstract class OpenCEX_depositorwithdraw extends OpenCEX_request{
-	protected function get_token(OpenCEX_L1_context $l1ctx, OpenCEX_SmartWalletManager $manager, string $token2, OpenCEX_L2_context $ctx2){
-		$ctx2->usegas(1);
-		$ctx2->ledgers_locked = true; //Override locking
+	protected function get_token(OpenCEX_SmartWalletManager $manager, string $token, OpenCEX_L2_context $ctx){
+		$ctx->usegas(1);
+		$ctx->ledgers_locked = true; //Override locking
 		$token_address;
-		switch($token2){
+		switch($token){
 			case "PolyEUBI":
 				$token_address = "0x553E77F7f71616382B1545d4457e2c1ee255FA7A";
 				break;
@@ -123,21 +123,23 @@ abstract class OpenCEX_depositorwithdraw extends OpenCEX_request{
 				$token_address = null;
 				break;
 		}
-		switch($token2){
-			case "PolyEUBI":
-				$l1ctx->safe_query("LOCK TABLES Balances WRITE, Nonces WRITE;");
-				return new OpenCEX_erc20_token($l1ctx, $token2, $manager, $token_address, new OpenCEX_pseudo_token($l1ctx, "MATIC"));
-			case "EUBI":
-			case "1000x":
-				$l1ctx->safe_query("LOCK TABLES Balances WRITE, Nonces WRITE;");
-				return new OpenCEX_erc20_token($l1ctx, $token2, $manager, $token_address, new OpenCEX_pseudo_token($l1ctx, "MintME"));
-			default:
-				$ret2 = new OpenCEX_native_token($l1ctx, $token2, $manager);
-				
-				$l1ctx->unlock_tables(true); //Override
-				$l1ctx->safe_query("LOCK TABLES Nonces WRITE;");
-				return $ret2;
-		}
+		return $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, string $token2, OpenCEX_SmartWalletManager $manager2){
+			switch($token2){
+				case "PolyEUBI":
+					$l1ctx->safe_query("LOCK TABLES Balances WRITE, Nonces WRITE;");
+					return new OpenCEX_erc20_token($l1ctx, $token2, $manager2, $token_address, new OpenCEX_pseudo_token($l1ctx, "MATIC"));
+				case "EUBI":
+				case "1000x":
+					$l1ctx->safe_query("LOCK TABLES Balances WRITE, Nonces WRITE;");
+					return new OpenCEX_erc20_token($l1ctx, $token2, $manager2, $token_address, new OpenCEX_pseudo_token($l1ctx, "MintME"));
+				default:
+					$ret2 = new OpenCEX_native_token($l1ctx, $token2, $manager2);
+					
+					$l1ctx->unlock_tables(true); //Override
+					$l1ctx->safe_query("LOCK TABLES Nonces WRITE;");
+					return $ret2;
+			}	
+		}, $token, $manager);
 		
 	}
 	
@@ -413,7 +415,7 @@ $request_methods = ["non_atomic" => new class extends OpenCEX_request{
 		
 		$safe = new OpenCEX_safety_checker($ctx);
 		$wallet = new OpenCEX_SmartWalletManager($safe, $this->resolve_blockchain($args["token"], $safe));
-		$token = $ctx->borrow_sql($this->get_token, $wallet, $args["token"], $ctx);
+		$token = $this->get_token($wallet, $args["token"], $ctx);
 		
 		
 		//We add some gas, so we don't fail due to insufficent gas.
@@ -431,7 +433,7 @@ $request_methods = ["non_atomic" => new class extends OpenCEX_request{
 		$ctx->check_safety(is_string($args["token"]), "Token must be string!");
 		$safe = new OpenCEX_safety_checker($ctx);
 		$wallet = new OpenCEX_SmartWalletManager($safe, $this->resolve_blockchain($args["token"], $safe), $ctx->cached_eth_deposit_key());
-		$token = $ctx->borrow_sql($this->get_token, $wallet, $args["token"], $ctx);
+		$token = $this->get_token($wallet, $args["token"], $ctx);
 		//We add some gas, so we don't fail due to insufficent gas.
 		$ctx->usegas(-1000);
 		$GLOBALS["OpenCEX_tempgas"] = true;
