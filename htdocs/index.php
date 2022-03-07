@@ -120,18 +120,18 @@ abstract class OpenCEX_depositorwithdraw extends OpenCEX_request{
 				$token_address = "0x7b535379bbafd9cd12b35d91addabf617df902b2";
 				break;
 			default:
-				$token_address = null;
+				$token_address = "";
 				break;
 		}
-		return $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, string $token2, OpenCEX_SmartWalletManager $manager2){
+		return $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, string $token2, OpenCEX_SmartWalletManager $manager2, string $token_address_2){
 			switch($token2){
 				case "PolyEUBI":
 					$l1ctx->safe_query("LOCK TABLES Balances WRITE, Nonces WRITE;");
-					return new OpenCEX_erc20_token($l1ctx, $token2, $manager2, $token_address, new OpenCEX_pseudo_token($l1ctx, "MATIC"));
+					return new OpenCEX_erc20_token($l1ctx, $token2, $manager2, $token_address_2, new OpenCEX_pseudo_token($l1ctx, "MATIC"));
 				case "EUBI":
 				case "1000x":
 					$l1ctx->safe_query("LOCK TABLES Balances WRITE, Nonces WRITE;");
-					return new OpenCEX_erc20_token($l1ctx, $token2, $manager2, $token_address, new OpenCEX_pseudo_token($l1ctx, "MintME"));
+					return new OpenCEX_erc20_token($l1ctx, $token2, $manager2, $token_address_2, new OpenCEX_pseudo_token($l1ctx, "MintME"));
 				default:
 					$ret2 = new OpenCEX_native_token($l1ctx, $token2, $manager2);
 					
@@ -139,7 +139,7 @@ abstract class OpenCEX_depositorwithdraw extends OpenCEX_request{
 					$l1ctx->safe_query("LOCK TABLES Nonces WRITE;");
 					return $ret2;
 			}	
-		}, $token, $manager);
+		}, $token, $manager, $token_address);
 		
 	}
 	
