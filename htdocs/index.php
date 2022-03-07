@@ -225,7 +225,7 @@ $request_methods = ["non_atomic" => new class extends OpenCEX_request{
 	function batchable(){
 		return false;
 	}
-}, "place_order" => new class extends depositorwithdraw{
+}, "place_order" => new class extends OpenCEX_request{
 	//TODO: Require captcha for order creation in production
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		//Safety checks
