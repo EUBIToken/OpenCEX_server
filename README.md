@@ -1,5 +1,7 @@
 # OpenCEX: Open-source cryptocurrency exchange
 
+[Start trading now](https://exchange.polyeubitoken.com/)
+
 As part of our transparency policy, we let customers view the source code of our cryptocurrency exchange.
 
 ## Roadmap
