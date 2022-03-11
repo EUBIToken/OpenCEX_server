@@ -181,7 +181,6 @@ $request_methods = ["non_atomic" => new class extends OpenCEX_request{
 		$password = $args["password"];
 		$ctx->check_safety(strlen($username) < 256, "Account creation error: username too long!");
 		$ctx->check_safety(strlen($username) > 3, "Account creation error: username too short!");
-		$ctx->check_safety_2(explode("_", $username)[0] == "highpay", "Illegal username prefix!");
 		$ctx->check_safety(strlen($password) > 8, "Account creation error: password too short!");
 		
 		//Do some work
