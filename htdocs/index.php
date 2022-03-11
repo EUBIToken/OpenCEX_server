@@ -573,8 +573,9 @@ try{
 			$data = [];
 		}
 		if($request_methods[$singular_request["method"]]->captcha_required()){
+			$ctx->check_safety(array_key_exists('HTTP_CF_CONNECTING_IP', $_SERVER), "Missing CloudFlare Client IP headers");
 			$ip_addr = $_SERVER['HTTP_CF_CONNECTING_IP'];
-			$ctx->check_safety_2($ip_addr == "::1", "captcha verification for localhost connections are supported!");
+			$ctx->check_safety_2($ip_addr == "::1", "captcha verification for localhost connections are unsupported!");
 			try{
 				$ctx->check_safety(array_key_exists('captcha', $data), "Captcha required!");
 				$captcha_result = (new SoapClient('../captcha.wsdl'))->send($ctx->safe_getenv("OpenCEX_raincaptcha_secret"), $data["captcha"], $ip_addr);
