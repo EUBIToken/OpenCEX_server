@@ -574,7 +574,7 @@ try{
 		if($request_methods[$singular_request["method"]]->captcha_required()){
 			try{
 				$ctx->check_safety(array_key_exists('captcha', $data), "Captcha required!");
-				$captcha_result = (new SoapClient('../captcha.wsdl'))->send($ctx->safe_getenv("OpenCEX_raincaptcha_secret"), $data["captcha"], null);
+				$captcha_result = (new SoapClient('../captcha.wsdl'))->send($ctx->safe_getenv("OpenCEX_raincaptcha_secret"), $data["captcha"], "0.0.0.0");
 				if ($captcha_result->status === 1) {
 					$captcha_solved = true;
 				} else {
