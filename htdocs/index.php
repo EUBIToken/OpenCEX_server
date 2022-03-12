@@ -578,7 +578,7 @@ try{
 				if ($captcha_result->status === 1) {
 					$captcha_solved = true;
 				} else {
-					$ctx->die2("Captcha required!");
+					$ctx->die2("Captcha required, error code: " . strval($captcha_result->error_code) . "!");
 				}
 			} catch (OpenCEX_assert_exception $e){
 				throw $e;
