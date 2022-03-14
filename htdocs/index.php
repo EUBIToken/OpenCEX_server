@@ -574,12 +574,18 @@ try{
 		if($request_methods[$singular_request["method"]]->captcha_required()){
 			try{
 				$ctx->check_safety(array_key_exists('captcha', $data), "Captcha required!");
-				$captcha_result = (new SoapClient('../captcha.wsdl'))->send($ctx->safe_getenv("OpenCEX_raincaptcha_secret"), $data["captcha"], "0.0.0.0");
-				if ($captcha_result->status === 1) {
-					$captcha_solved = true;
-				} else {
-					$ctx->die2("Captcha required, error code: " . strval($captcha_result->error_code) . "!");
-				}
+				$ctx->check_safety(is_string($data['captcha']), "ReCaptcha response must be string!");
+				$captcha_result = $ctx->safe_decode_json(file_get_contents('https://www.google.com/recaptcha/api/siteverify', false, stream_context_create([
+					'http' => [
+						'method' => 'POST',
+						'header'  => "Content-type: application/x-www-form-urlencoded",
+						'content' => http_build_query([
+							'secret' => $ctx->safe_getenv('OpenCEX_recaptcha_secret'), 'response' => $data['captcha'], 'remoteip' => $_SERVER["HTTP_CF_CONNECTING_IP"]
+						])
+					]
+				])));
+				$ctx->check_safety(array_key_exists('success', $captcha_result), "Invalid ReCaptcha response!");
+				$ctx->check_safety($captcha_result['success'], "Captcha required!");
 			} catch (OpenCEX_assert_exception $e){
 				throw $e;
 			} catch (Exception $e){
