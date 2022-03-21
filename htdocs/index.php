@@ -229,6 +229,7 @@ $request_methods = ["non_atomic" => new class extends OpenCEX_request{
 }, "place_order" => new class extends OpenCEX_request{
 	//TODO: Require captcha for order creation in production
 	public function execute(OpenCEX_L3_context $ctx, $args){
+		$ctx->die2("Method disabled due to security vulnerability!");
 		//Safety checks
 		$ctx->check_safety(is_int($args["fill_mode"]), "Order placement error: order filling mode must be int!");
 		$fill_mode = intval($args["fill_mode"]);
@@ -427,6 +428,7 @@ $request_methods = ["non_atomic" => new class extends OpenCEX_request{
 	}
 }, "deposit" => new class extends OpenCEX_depositorwithdraw{
 	public function execute(OpenCEX_L3_context $ctx, $args){
+		$ctx->die2("Method disabled due to security vulnerability!");
 		$ctx->check_safety(count($args) == 1, "Deposit must specify one argument!");
 		$ctx->check_safety(array_key_exists("token", $args), "Deposit must specify token!");
 		$ctx->check_safety(is_string($args["token"]), "Token must be string!");
@@ -469,6 +471,7 @@ $request_methods = ["non_atomic" => new class extends OpenCEX_request{
 	}
 }, "cancel_order" => new class extends OpenCEX_request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
+		$ctx->die2("Method disabled due to security vulnerability!");
 		$ctx->check_safety(count($args) == 1, "Order cancellation must specify one argument!");
 		$ctx->check_safety(array_key_exists("target", $args), "Order cancellation must specify target!");
 		$ctx->check_safety(is_string($args["target"]), "Target must be string!");
@@ -580,7 +583,7 @@ try{
 						'method' => 'POST',
 						'header'  => "Content-type: application/x-www-form-urlencoded",
 						'content' => http_build_query([
-							'secret' => $ctx->safe_getenv('OpenCEX_recaptcha_secret'), 'response' => $data['captcha'], 'remoteip' => $_SERVER["HTTP_CF_CONNECTING_IP"]
+							'secret' => $ctx->safe_getenv('OpenCEX_recaptcha_secret'), 'response' => $data['captcha']
 						])
 					]
 				])));
