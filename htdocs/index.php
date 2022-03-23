@@ -214,18 +214,6 @@ $request_methods = ["non_atomic" => new class extends OpenCEX_request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		return $ctx->destroy_active_session();
 	}
-}, "get_test_tokens" => new class extends OpenCEX_request{
-	public function execute(OpenCEX_L3_context $ctx, $args){
-		$cachedid = $ctx->get_cached_user_id();
-		$ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, int $userid2){
-			//NOTE: We use nested transactions to ensure that the lock is properly released!
-			(new OpenCEX_pseudo_token($l1ctx, "shitcoin"))->creditordebit($userid2, "1000000000000000000", true);
-			(new OpenCEX_pseudo_token($l1ctx, "scamcoin"))->creditordebit($userid2, "1000000000000000000", true);
-		}, $cachedid);
-	}
-	function batchable(){
-		return false;
-	}
 }, "place_order" => new class extends OpenCEX_request{
 	//TODO: Require captcha for order creation in production
 	public function execute(OpenCEX_L3_context $ctx, $args){
@@ -465,38 +453,6 @@ $request_methods = ["non_atomic" => new class extends OpenCEX_request{
 			}
 			return $ret;
 		}, $ctx->get_cached_user_id());
-	}
-	function batchable(){
-		return false;
-	}
-}, "cancel_order" => new class extends OpenCEX_request{
-	public function execute(OpenCEX_L3_context $ctx, $args){
-		$ctx->die2("Method disabled due to security vulnerability!");
-		$ctx->check_safety(count($args) == 1, "Order cancellation must specify one argument!");
-		$ctx->check_safety(array_key_exists("target", $args), "Order cancellation must specify target!");
-		$ctx->check_safety(is_string($args["target"]), "Target must be string!");
-		$ctx->check_safety(is_numeric($args["target"]), "Target must be numeric!");
-		$result = $ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, string $target){
-			$l1ctx->safe_query("LOCK TABLE Orders WRITE, Sessions READ, Accounts READ;");
-			$res2 = $l1ctx->safe_query(implode(['SELECT PlacedBy, Pri, Sec, InitialAmount, TotalCost, Buy FROM Orders WHERE Id = "', $target, '";']));
-			return $res2;
-		}, $args["target"]);
-		$ctx->orders_locked = true; //Override locking
-		$ctx->check_safety_2($result->num_rows == 0, "Non-existant order!");
-		$ctx->check_safety($result->num_rows == 1, "Corrupted orders database!");
-		$result = $result->fetch_assoc();
-		$id = $ctx->get_cached_user_id();
-		$ctx->check_safety($ctx->convcheck2($result, "PlacedBy") == strval($id), "Attempted to cancel another user's order!");
-		$ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, string $target, OpenCEX_safety_checker $safe, OpenCEX_L3_context $ctx2, $res2, int $id2){
-			$l1ctx->safe_query(implode(['DELETE FROM Orders WHERE Id = "', $target, '";']));
-			$remains = OpenCEX_uint::init($safe, $safe->convcheck2($res2, "InitialAmount"));
-			$remains = $remains->sub(OpenCEX_uint::init($safe, $safe->convcheck2($res2, "TotalCost")));
-			$query2 = implode([$ctx2->safe_getenv("OpenCEX_worker"), "/", urlencode($ctx2->safe_getenv("OpenCEX_shared_secret")), "/parallelCredit/", strval($id2), "/", urlencode($safe->convcheck2($res2, ($safe->convcheck2($res2, "Buy") == "1") ? "Pri" : "Sec")), "/", strval($remains)]);
-			$safe->check_safety(file_get_contents($query2) === "ok", "Balance update failed!");
-			$l1ctx->unlock_tables();
-		}, $args["target"], new OpenCEX_safety_checker($ctx), $ctx, $result, $id);
-		
-		
 	}
 	function batchable(){
 		return false;
