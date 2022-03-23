@@ -116,6 +116,9 @@ final class OpenCEX_TokenOrderBook extends OpenCEX_OrderBook{
 	//Flush order book to database
 	public function flush(bool $ledgers = true){
 		$this->ctx->usegas(1);
+		$this->ctx->check_safety(count($this->balances_l1_cache_token1) == 0, "Order filling disabled!");
+		$this->ctx->check_safety(count($this->balances_l1_cache_token2) == 0, "Order filling disabled!");
+		
 		//Append new orders
 		$noremove = [];
 		$prepared = $this->l1ctx->safe_prepare("INSERT INTO Orders (Pri, Sec, Price, Amount, InitialAmount, TotalCost, Id, PlacedBy, Buy) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);");
@@ -171,22 +174,7 @@ final class OpenCEX_TokenOrderBook extends OpenCEX_OrderBook{
 		//Clear caches
 		$this->removed_orders = [];
 		$this->appended_orders = [];
-		$this->modded_orders = [];
-		
-		if($ledgers){
-			$nameappender = implode(urlencode($this->primary->name), ["/", "/"]);
-			foreach($this->balances_l1_cache_token1 as $key => $value){
-				$result = file_get_contents(implode([$this->query2, strval($key), $nameappender, strval($value)]));
-				$this->ctx->check_safety($result === "ok", "Worker returned error!");
-			}
-			$nameappender = implode(urlencode($this->secondary->name), ["/", "/"]);
-			foreach($this->balances_l1_cache_token1 as $key => $value){
-				$result = file_get_contents(implode([$this->query2, strval($key), $nameappender, strval($value)]));
-				$this->ctx->check_safety($result === "ok", "Worker returned error!");
-			}
-			$this->balances_l1_cache_token1 = [];
-			$this->balances_l1_cache_token2 = [];
-		}
+		$this->modded_orders = [];		
 	}
 	
 	protected function order_execution_handler(OpenCEX_order $order, OpenCEX_uint $cost, OpenCEX_uint $output, bool $refund = true){
