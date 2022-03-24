@@ -491,11 +491,14 @@ abstract class OpenCEX_L2_context{
 		$introws = intval($result->num_rows);
 		$this->check_safety_2($introws == 0, "Invalid session token!");
 		$this->check_safety($introws == 1, "Corrupted sessions database!");
-		$result = $result->fetch_assoc();				
+		$result = $result->fetch_assoc();
 		
 		//Check if account is valid (not deleted)
 		$userid = intval($this->convcheck2($result, "UserID"));
 		$this->check_safety($this->check_valid_account($userid), "Invalid user account!");
+		
+		//Check if user id is valid (not the null account)
+		$this->check_safety_2($userid == 0, "Illegal User ID!");
 		
 		//Check if session is valid (not expired)
 		$this->check_safety_2(time() > intval($this->convcheck2($result, "Expiry")), "Session token expired!");
