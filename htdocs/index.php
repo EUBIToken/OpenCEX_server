@@ -214,6 +214,152 @@ $request_methods = ["non_atomic" => new class extends OpenCEX_request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		return $ctx->destroy_active_session();
 	}
+}, "place_order" => new class extends OpenCEX_request{
+	//TODO: Require captcha for order creation in production
+	public function execute(OpenCEX_L3_context $ctx, $args){
+		$ctx->check_safety($ctx->safe_getenv("OpenCEX_devserver") == "true", "Method disabled due to security vulnerability!");
+		//Safety checks
+		$ctx->check_safety(is_int($args["fill_mode"]), "Order placement error: order filling mode must be int!");
+		$fill_mode = intval($args["fill_mode"]);
+		unset($args["fill_mode"]);
+		check_safety_3($ctx, $args, "buy");
+		$ctx->check_safety(count($args) === 5, "Order placement requires 5 arguments!");
+		$ctx->check_safety(array_key_exists("primary", $args), "Order placement error: missing primary token!");
+		$ctx->check_safety(array_key_exists("secondary", $args), "Order placement error: missing secondary token!");
+		$ctx->check_safety(array_key_exists("price", $args), "Order placement error: missing price!");
+		$ctx->check_safety(array_key_exists("amount", $args), "Order placement error: missing amount!");
+		$ctx->check_safety(array_key_exists("buy", $args), "Order placement error: missing order type!");
+		$ctx->check_safety(is_bool($args["buy"]), "Order placement error: order type must be boolean!");
+		$ctx->check_safety(in_array(implode([$args["primary"], "_", $args["secondary"]]), $ctx->safe_decode_json($ctx->safe_getenv("OpenCEX_whitelisted_pairs"))), "Order placement error: nonexistant pair!");
+		$ctx->check_safety_2($fill_mode < 0, "Invalid order fill mode!");
+		$ctx->check_safety($fill_mode < 3, "Invalid order fill mode!");
+		
+		//Initialize SafeMath's large unsigned integers
+		$safe = new OpenCEX_safety_checker($ctx);
+		$price = OpenCEX_uint::init($safe, $args["price"]);
+		$amount;
+		$real_amount = OpenCEX_uint::init($safe, $args["amount"]);
+		$chk_token;
+		if($args["buy"]){
+			$amount = $real_amount->mul($price)->div(OpenCEX_uint::init($safe, "1000000000000000000"));
+			$chk_token = $args["primary"];
+		} else{
+			$amount = $real_amount;
+			$chk_token = $args["secondary"];
+		}
+		if($fill_mode == 0){
+			$real_amount->sub(OpenCEX_uint::init($safe, $ctx->safe_decode_json($ctx->safe_getenv("OpenCEX_minimum_limit"))[$chk_token]), "Order size is smaller than the minimum limit order size!");
+		}
+		
+		$ctx->borrow_sql(function(OpenCEX_L1_context $l1ctx, int $userid2, OpenCEX_safety_checker $safe2, OpenCEX_uint $price2, OpenCEX_uint $amount2, OpenCEX_uint $real_amount2, $args2, int $fill_mode2, OpenCEX_L2_context $ctx2){
+			//LOCK TABLES
+			$ctx2->lock_ledgers();
+			
+			//Initialize database of balances, and debit amount from user
+			$primary = new OpenCEX_pseudo_token($l1ctx, $args2["primary"]);
+			$secondary = new OpenCEX_pseudo_token($l1ctx, $args2["secondary"]);
+			if($args2["buy"]){
+				$primary->creditordebit($userid2, $amount2, false, true);
+			} else{
+				$secondary->creditordebit($userid2, $amount2, false, true);
+			}
+			
+			
+			$l1ctx->safe_query("LOCK TABLES Orders WRITE, Misc WRITE;");
+			$ctx2->ledgers_locked = false;
+			$ctx2->orders_locked = true;
+			
+			
+			//Increment orders counter
+			$result = $l1ctx->safe_query("SELECT Val FROM Misc WHERE Kei = 'OrderCounter';");
+			if($result->num_rows == 0){
+				$result = OpenCEX_uint::init($safe2, "0");
+				$l1ctx->safe_query("INSERT INTO Misc (Kei, Val) VALUES ('OrderCounter', '1')");
+			} else{
+				$safe2->check_safety($result->num_rows == 1, "Multiple order counters found!");
+				$result = OpenCEX_uint::init($safe2, $safe2->convcheck2($result->fetch_assoc(), "Val"));
+				$l1ctx->safe_query(implode(["UPDATE Misc SET Val = '", strval($result->add(OpenCEX_uint::init($safe2, "1"))), "' WHERE Kei = 'OrderCounter';"]));
+			}
+			
+			//Initialize matching engine
+			$orders = new OpenCEX_TokenOrderBook($l1ctx, $primary, $secondary, $args2["buy"], !$args2["buy"]);
+			
+			//Call matching engine
+			$open = OpenCEX_uint::init($safe2, "0");
+			$new_close = $orders->append_order(new OpenCEX_order($safe2, $price2, $real_amount2, $amount2, $open, strval($result), $userid2, $args2["buy"]), $fill_mode2);
+			
+			//Flush order book to database
+			$orders->flush();
+			
+			//Update charts
+			if($new_close){
+				$primary = $args2["primary"];
+				$secondary = $args2["secondary"];
+				$l1ctx->safe_query("LOCK TABLES HistoricalPrices WRITE;");
+				$l1ctx->unlock_tables(true); //Override locking protection
+				$prepared = $l1ctx->safe_prepare("SELECT Timestamp, Open, High, Low, Close FROM HistoricalPrices WHERE Pri = ? AND Sec = ? ORDER BY Timestamp DESC LIMIT 1;");
+				$prepared->bind_param('ss', $primary, $secondary);
+				$result = $l1ctx->safe_execute_prepared($prepared);
+				$append;
+				$high;
+				$low;
+				$close;
+				$start = time();
+				$start = OpenCEX_uint::init($safe2, strval($start - ($start % 86400)));
+				if($result->num_rows == 0){
+					$low = $open;
+					$close = $new_close;
+					$high = $close;
+					$append = true;
+				} else{
+					$safe2->check_safety($result->num_rows == 1, "Corrupted chart database!");
+					$result = $result->fetch_assoc();
+					$time = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "Timestamp"));
+					
+					$append = $start->sub($time)->comp(OpenCEX_uint::init($safe2, "86400")) == 1;
+					if($append){
+						$open = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "Close"));
+						$high = $open;
+						$low = $open;
+						$close = $new_close;
+					} else{
+						$open = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "Open"));
+						$high = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "High"));
+						$low = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "Low"));
+						$close = OpenCEX_uint::init($safe2, $safe2->convcheck2($result, "Close"));
+					}
+				}
+				
+				if($append){
+					$time = $start;
+					$prepared = $l1ctx->safe_prepare("INSERT INTO HistoricalPrices (Open, High, Low, Close, Timestamp, Pri, Sec) VALUES (?, ?, ?, ?, ?, ?, ?);");
+				} else{
+					$close = $new_close;
+					$prepared = $l1ctx->safe_prepare("UPDATE HistoricalPrices SET Open = ?, High = ?, Low = ?, Close = ? WHERE Timestamp = ? AND Pri = ? AND Sec = ?;");
+				}
+				
+				if($close->comp($high) == 1){
+					$high = $close;
+				}
+					
+				if($low->comp($close) == 1){
+					$low = $close;
+				}
+				
+				$open2 = strval($open);
+				$high2 = strval($high);
+				$low2 = strval($low);
+				$close2 = strval($close);
+				$time2 = strval($time);
+				
+				$prepared->bind_param("sssssss", $open2, $high2, $low2, $close2, $time2, $primary, $secondary);
+				$l1ctx->safe_execute_prepared($prepared);
+			}
+		}, $ctx->get_cached_user_id(), $safe, $price, $amount, $real_amount, $args, $fill_mode, $ctx);
+	}
+	function batchable(){
+		return false;
+	}
 }, "balances" => new class extends OpenCEX_request{
 	public function execute(OpenCEX_L3_context $ctx, $args){
 		$result = $ctx->fetchBalancesStream($ctx->get_cached_user_id());
