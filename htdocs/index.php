@@ -253,7 +253,9 @@ $request_methods = ["non_atomic" => new class extends OpenCEX_request{
 		check_safety_3($ctx, $args, null);
 		$ctx->check_safety(array_key_exists("token", $args), "Withdrawal must specify token!");
 		$ctx->check_safety(array_key_exists("amount", $args), "Withdrawal must specify amount!");
-		$ctx->check_safety(array_key_exists("address", $args), "Withdrawal must specify recipient address!");
+		$ctx->check_safety(array_key_exists("address", $args), "Withdrawal must specify recipient address!")
+		$userid = $ctx->get_cached_user_id();
+		$ctx->check_safety_2($userid == 0, "Illegal UserID!");
 		
 		$safe = new OpenCEX_safety_checker($ctx);
 		$wallet = new OpenCEX_SmartWalletManager($safe, $this->resolve_blockchain($args["token"], $safe));
@@ -263,24 +265,7 @@ $request_methods = ["non_atomic" => new class extends OpenCEX_request{
 		//We add some gas, so we don't fail due to insufficent gas.
 		$ctx->usegas(-1000);
 		$GLOBALS["OpenCEX_tempgas"] = true;
-		$token->send($ctx->get_cached_user_id(), $args["address"], OpenCEX_uint::init($safe, $args["amount"]));
-	}
-	function batchable(){
-		return false;
-	}
-}, "deposit" => new class extends OpenCEX_depositorwithdraw{
-	public function execute(OpenCEX_L3_context $ctx, $args){
-		$ctx->die2("Method disabled due to security vulnerability!");
-		$ctx->check_safety(count($args) == 1, "Deposit must specify one argument!");
-		$ctx->check_safety(array_key_exists("token", $args), "Deposit must specify token!");
-		$ctx->check_safety(is_string($args["token"]), "Token must be string!");
-		$safe = new OpenCEX_safety_checker($ctx);
-		$wallet = new OpenCEX_SmartWalletManager($safe, $this->resolve_blockchain($args["token"], $safe), $ctx->cached_eth_deposit_key());
-		$token = $this->get_token($wallet, $args["token"], $ctx);
-		//We add some gas, so we don't fail due to insufficent gas.
-		$ctx->usegas(-1000);
-		$GLOBALS["OpenCEX_tempgas"] = true;
-		$token->sweep($ctx->get_cached_user_id());
+		$token->send($userid, $args["address"], OpenCEX_uint::init($safe, $args["amount"]));
 	}
 	function batchable(){
 		return false;
@@ -310,19 +295,6 @@ $request_methods = ["non_atomic" => new class extends OpenCEX_request{
 	}
 	function batchable(){
 		return false;
-	}
-}, "bid_ask" => new class extends OpenCEX_request{
-	public function execute(OpenCEX_L3_context $ctx, $args){
-		$ctx->check_safety(count($args) == 2, "Bid-ask quoting requires 2 arguments!");
-		check_safety_3($ctx, $args);
-		$ctx->check_safety(array_key_exists("primary", $args), "Bid-ask quoting requires primary token!");
-		$ctx->check_safety(array_key_exists("secondary", $args), "Bid-ask quoting requires secondary token!");
-		
-		$primary = $args["primary"];
-		$secondary = $args["secondary"];
-		$ctx->check_safety(in_array(implode("_", [$primary, $secondary]), $ctx->safe_decode_json($ctx->safe_getenv("OpenCEX_whitelisted_pairs")), true), "Invalid trading pair!");
-		return [$ctx->getbidask($primary, $secondary, true), $ctx->getbidask($primary, $secondary, false)];
-		
 	}
 }];
 
