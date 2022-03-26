@@ -253,7 +253,7 @@ $request_methods = ["non_atomic" => new class extends OpenCEX_request{
 		check_safety_3($ctx, $args, null);
 		$ctx->check_safety(array_key_exists("token", $args), "Withdrawal must specify token!");
 		$ctx->check_safety(array_key_exists("amount", $args), "Withdrawal must specify amount!");
-		$ctx->check_safety(array_key_exists("address", $args), "Withdrawal must specify recipient address!")
+		$ctx->check_safety(array_key_exists("address", $args), "Withdrawal must specify recipient address!");
 		$userid = $ctx->get_cached_user_id();
 		$ctx->check_safety_2($userid == 0, "Illegal UserID!");
 		
