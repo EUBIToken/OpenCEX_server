@@ -3,7 +3,7 @@
 	$host = getenv("OpenCEX_host");
 	$secure = getenv("OpenCEX_secure");
 	if(is_string($host) && is_string($secure)){
-		setcookie("__Host-OpenCEX_session", "", 1, "", $host, $secure === "true", true);
+		setcookie("__Secure-OpenCEX_session", "", 1, "", $host, $secure === "true", true);
 	} else{
 		http_response_code(500);
 	}

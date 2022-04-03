@@ -529,7 +529,7 @@ abstract class OpenCEX_L2_context{
 		
 		//Destroy session token on client side
 		//NOTE: no failure checking, since the session would be destroyed on the server side anyways!
-		setcookie("__Host-OpenCEX_session", "", 1, "", $this->safe_getenv("__Host-OpenCEX_host"), getenv("OpenCEX_secure") === "true", true);
+		setcookie("__Secure-OpenCEX_session", "", 1, "", $this->safe_getenv("__Secure-OpenCEX_host"), getenv("OpenCEX_secure") === "true", true);
 	}
 	
 	protected abstract function finalize_logon($prepared, string $password, bool $persistent);
@@ -665,8 +665,8 @@ final class OpenCEX_L3_context extends OpenCEX_L2_context {
 	
 	public function get_active_session_token(){
 		$this->usegas(1);
-		if(array_key_exists("__Host-OpenCEX_session", $_COOKIE)){
-			return base64_decode($_COOKIE["__Host-OpenCEX_session"], true);
+		if(array_key_exists("__Secure-OpenCEX_session", $_COOKIE)){
+			return base64_decode($_COOKIE["__Secure-OpenCEX_session"], true);
 		} else{
 			return false;
 		}
@@ -716,7 +716,7 @@ final class OpenCEX_L3_context extends OpenCEX_L2_context {
 			$expiry = 0;
 		}
 		
-		$this->check_safety(setcookie("__Host-OpenCEX_session", base64_encode($session_token), $expiry, "", $this->safe_getenv("OpenCEX_host"), getenv("OpenCEX_secure") === "true", true), "Unable to set session cookie!");
+		$this->check_safety(setcookie("__Secure-OpenCEX_session", base64_encode($session_token), $expiry, "", $this->safe_getenv("OpenCEX_host"), getenv("OpenCEX_secure") === "true", true), "Unable to set session cookie!");
 	}
 	
 	private int $cached_user_id = -1;
