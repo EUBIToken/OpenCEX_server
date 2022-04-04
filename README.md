@@ -2,9 +2,8 @@
 
 ## [Start trading now](https://exchange.polyeubitoken.com/)
 
-## NOTE: The OpenCEX PHP server is being superseded by [OpenCEX.NET: The Microsoft.NET port of OpenCEX](https://github.com/EUBIToken/OpenCEX.NET). Once OpenCEX.NET is completed, we'll completely decommission the OpenCEX PHP server. The OpenCEX Node.JS Worker have been completely decommissioned due to security vulnerabilities.
-
-As part of our transparency policy, we let customers view the source code of our cryptocurrency exchange.
+## NOTE: The OpenCEX PHP server had been decommissioned since we are moving to C#! This code may contain serious security vulnerabilities, use at your own risk.
+### [OpenCEX.NET: C# port of OpenCEX](https://github.com/EUBIToken/OpenCEX.NET)
 
 ## Roadmap
 
